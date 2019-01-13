@@ -1,0 +1,138 @@
+###########################################################################
+# This is my .gitignore for Java/Eclipse projects                         #
+# It was based on:                                                        #
+# http://www.bmchild.com/2012/06/git-ignore-for-java-eclipse-project.html #
+#                                                                         #
+# Author: Rafał Sumisławski                                               #
+# Last update: 2015-04-24                                                 #
+###########################################################################
+
+######################
+# General
+######################
+
+# Common Output Folders #
+/build/
+/bin/
+/target/
+/out/
+/output/
+
+  
+# Binary Files #
+*.class
+*.jar
+*.war
+*.ear
+*.db
+  
+######################
+# Windows
+######################
+  
+# Windows image file caches
+Thumbs.db
+  
+# Folder config file
+Desktop.ini
+  
+######################
+# OSX
+######################
+  
+.DS_Store
+  
+# Thumbnails
+._*
+  
+# Files that might appear on external disk
+.Spotlight-V100
+.Trashes
+
+######################
+# Linux
+######################
+  
+*~
+  
+######################
+# Eclipse
+######################
+
+*.pydevproject
+.project
+.metadata
+bin/**
+tmp/**
+tmp/**/*
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.classpath
+.settings/
+.loadpath
+
+# External tool builders
+.externalToolBuilders/
+  
+# Locally stored "Eclipse launch configurations"
+*.launch
+  
+# CDT-specific
+.cproject
+  
+# PDT-specific
+.buildpath
+
+######################
+# InteliJ Idea
+######################
+.idea/
+*.iml
+
+######################
+# Technology specific
+######################
+
+# java
+
+.springBeans
+
+######################
+# Version Control Systems
+######################
+
+.svn
+.orig
+
+######################
+# Others
+######################
+
+.checkstyle
+/dependency-reduced-pom.xml
+/rc.local
+rebel.xml
+*.log
+
+######################
+# Optional
+######################
+# Using these may cause some problems
+# for example using /out/ will ignore out folder, but also org.na.streams.out java package :P
+
+# build/
+# bin/
+# target/
+# out/
+# output/
+
+######################
+# Project specific
+######################
+/modules/*/target
+/project/project/target
+/project/target
+*.sc
