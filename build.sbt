@@ -1,5 +1,6 @@
 
 name := "swaggerify"
+organization := "swaggerify"
 
 version := "0.1.0-SNAPSHOT"
 val sVersion = "2.12.8"
@@ -32,8 +33,8 @@ val swaggerValidator = ("io.swagger" % "swagger-validator" % "1.0.5").excludeAll
   ExclusionRule("org.eclipse.jetty"), ExclusionRule("org.glassfish"), ExclusionRule("org.glassfish.hk2"), 
   ExclusionRule("org.glassfish.hk2.external"), ExclusionRule("org.glassfish.jersey.bundlers"), 
   ExclusionRule("org.glassfish.jersey.containers"), ExclusionRule("org.glassfish.jersey.core"), ExclusionRule("org.glassfish.jersey.media"))
-val http4sCore = "org.http4s" %% "http4s-core" % "0.20.0-M4"
-val rhoSwagger = "org.http4s" %% "rho-swagger" % "0.19.0-M4"
+val http4sCore = "org.http4s" %% "http4s-core" % "0.20.0-M5"
+val rhoSwagger = "org.http4s" %% "rho-swagger" % "0.19.0-M5"
 
 val scalaTest = "org.scalatest" %% "scalatest" % "3.0.5"
 lazy val specs2Version = "4.3.6"

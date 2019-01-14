@@ -149,13 +149,17 @@ object Swaggerify {
 
   implicit def swaggerifyIndexedSeq[I: Swaggerify]: Swaggerify[IndexedSeq[I]] = swaggerifyAsArray[IndexedSeq[I], I]()
 
+  implicit def swaggerifyList[I: Swaggerify]: Swaggerify[List[I]] = swaggerifyAsArray[List[I], I]()
+
+  implicit def swaggerifyVector[I: Swaggerify]: Swaggerify[Vector[I]] = swaggerifyAsArray[Vector[I], I]()
+
   implicit def swaggerifyJList[I: Swaggerify]: Swaggerify[java.util.List[I]] = swaggerifyAsArray[java.util.List[I], I]()
 
   def swaggerifyAsArray[T, I: Swaggerify](uniqueItems: Boolean = false): Swaggerify[T] =
     Swg(
       asProperty = ArrayProperty(Swaggerify[I].asProperty, uniqueItems = uniqueItems),
       asModel = Some(ArrayModel(id = null, id2 = null, `type` = Some("array"), items = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
-      modelDependencies = Swaggerify[I].modelDependencies
+      modelDependencies = Swaggerify[I].propertyDependencies
     )
 
   implicit def swaggerifyStringMap[I: Swaggerify]: Swaggerify[Map[String, I]] = swaggerifyAsMap[Map[String, I], I]
@@ -172,8 +176,22 @@ object Swaggerify {
     Swg(
       asProperty = MapProperty(Swaggerify[I].asProperty, required = true),
       asModel = Some(ModelImpl(id = null, id2 = null, `type` = Some("object"), additionalProperties = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
-      modelDependencies = Swaggerify[I].modelDependencies
+      modelDependencies = Swaggerify[I].propertyDependencies
     )
+
+  // consider excluding it from the default implicits as there are many reasonable ways to encode an either.
+  implicit def swaggerifyEither[L: Swaggerify, R: Swaggerify]: Swaggerify[Either[L, R]] = {
+    // I don't like what's happening here with the ids.
+    val id2 = s"Either[${Swaggerify[L].asProperty.`type`}, ${Swaggerify[R].asProperty.`type`}]"
+    val model = ModelImpl(
+      id = s"scala.$id2",
+      id2 = id2,
+      description = Some(id2),
+      `type` = Some("object"),
+      properties = Map("left" -> Swaggerify[L].asProperty.withRequired(false), "right" -> Swaggerify[R].asProperty.withRequired(false)) // FIXME strange things will happen with Either[Option[L], R] etc.
+    )
+    Swg(RefProperty(model.id2), Some(model), Swaggerify[L].propertyDependencies ++ Swaggerify[R].propertyDependencies)
+  }
 
   // TODO consider:
   // Effect
