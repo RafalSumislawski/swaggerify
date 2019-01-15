@@ -1,0 +1,390 @@
+package swaggerify
+
+import io.circe.Encoder
+import io.circe.generic.auto._
+import io.circe.generic.semiauto
+
+package object models {
+
+  case class Swagger
+    (
+      swagger             : String                                = "2.0"
+    , info                : Option[Info]                          = None
+    , host                : Option[String]                        = None
+    , basePath            : Option[String]                        = None
+    , schemes             : List[Scheme]                          = Nil
+    , consumes            : List[String]                          = Nil
+    , produces            : List[String]                          = Nil
+    , paths               : Map[String, Path]                     = Map.empty
+    , securityDefinitions : Map[String, SecuritySchemeDefinition] = Map.empty
+    , definitions         : Map[String, Model]                    = Map.empty
+    , parameters          : Map[String, Parameter]                = Map.empty
+    , externalDocs        : Option[ExternalDocs]                  = None
+    , security            : Map[String, List[String]]             = Map.empty
+    , vendorExtensions    : Map[String, Any]                      = Map.empty
+    )
+
+  case class Info
+    (
+      title            : String
+    , version          : String
+    , description      : Option[String]   = None
+    , termsOfService   : Option[String]   = None
+    , contact          : Option[Contact]  = None
+    , license          : Option[License]  = None
+    , vendorExtensions : Map[String, Any] = Map.empty
+    )
+
+  case class Contact
+    (
+      name  : String
+    , url   : Option[String] = None
+    , email : Option[String] = None
+    )
+
+  case class License
+    (
+      name  : String
+    , url   : String
+    )
+
+  sealed trait Scheme
+  object Scheme {
+    case object HTTP  extends Scheme
+    case object HTTPS extends Scheme
+    case object WS    extends Scheme
+    case object WSS   extends Scheme
+  }
+
+  sealed trait SecuritySchemeDefinition {
+    def `type`: String
+  }
+
+  case class OAuth2Definition
+    (
+      authorizationUrl : String
+    , tokenUrl         : String
+    , flow             : String
+    , scopes           : Map[String, String]
+    ) extends SecuritySchemeDefinition {
+    override val `type` = "oauth2"
+  }
+
+  case class OAuth2VendorExtensionsDefinition
+  (
+      authorizationUrl : String
+    , vendorExtensions : Map[String, AnyRef]
+    , flow             : String
+    , scopes           : Map[String, String]
+    , tokenUrl         : Option[String] = None
+  ) extends SecuritySchemeDefinition {
+    override val `type` = "oauth2"
+  }
+
+  case class ApiKeyAuthDefinition
+  (
+    name : String
+    , in   : In
+    , description: Option[String] = None
+  ) extends SecuritySchemeDefinition {
+    override val `type` = "apiKey"
+  }
+
+  case object BasicAuthDefinition extends SecuritySchemeDefinition {
+    override val `type` = "basic"
+  }
+
+  sealed trait In
+  object In {
+    case object HEADER extends In
+    case object QUERY  extends In
+  }
+
+
+  case class SecurityScope
+    (
+      name        : String
+    , description : String
+    )
+
+  case class Path
+    (
+      get              : Option[Operation] = None
+    , put              : Option[Operation] = None
+    , post             : Option[Operation] = None
+    , delete           : Option[Operation] = None
+    , patch            : Option[Operation] = None
+    , options          : Option[Operation] = None
+    , head             : Option[Operation] = None
+    , parameters       : List[Parameter]   = Nil
+    , vendorExtensions : Map[String, Any]  = Map.empty
+    )
+
+  case class Operation
+    (
+      tags             : List[String]                    = Nil
+    , summary          : Option[String]                  = None
+    , description      : Option[String]                  = None
+    , operationId      : Option[String]                  = None
+    , schemes          : List[Scheme]                    = Nil
+    , consumes         : List[String]                    = Nil
+    , produces         : List[String]                    = Nil
+    , parameters       : List[Parameter]                 = Nil
+    , responses        : Map[String, Response]           = Map.empty
+    , security         : List[Map[String, List[String]]] = Nil
+    , externalDocs     : Option[ExternalDocs]            = None
+    , deprecated       : Boolean                         = false
+    , vendorExtensions : Map[String, Any]                = Map.empty
+    )
+
+  case class Response
+    (
+      description : String
+    , schema      : Option[Property]      = None
+    , examples    : Map[String, String]   = Map.empty
+    , headers     : Map[String, Property] = Map.empty
+    )
+
+  sealed trait Model {
+    def id: String
+    def id2: String
+    def description: Option[String]
+    def properties: Map[String, Property]
+    def example: Option[String]
+    def externalDocs : Option[ExternalDocs]
+  }
+
+  implicit val modelEncoder: Encoder[Model] = {
+    case m: ModelImpl => implicitly[Encoder[ModelImpl]].apply(m)
+    case m: ArrayModel => implicitly[Encoder[ArrayModel]].apply(m)
+    case m: ComposedModel => implicitly[Encoder[ComposedModel]].apply(m)
+    case m: RefModel => implicitly[Encoder[RefModel]].apply(m)
+  }
+
+  case class ModelImpl
+    (
+      id                   : String
+    , id2                  : String
+    , description          : Option[String]        = None
+    , `type`               : Option[String]        = None
+    , name                 : Option[String]        = None
+    , required             : List[String]          = Nil
+    , properties           : Map[String, Property] = Map.empty
+    , isSimple             : Boolean               = false
+    , example              : Option[String]        = None
+    , additionalProperties : Option[Property]      = None
+    , discriminator        : Option[String]        = None
+    , externalDocs         : Option[ExternalDocs]  = None
+    ) extends Model
+
+  case class ArrayModel
+    (
+      id           : String
+    , id2          : String
+    , description  : Option[String]        = None
+    ,`type`        : Option[String]        = None
+    , properties   : Map[String, Property] = Map.empty
+    , items        : Option[Property]      = None
+    , example      : Option[String]        = None
+    , externalDocs : Option[ExternalDocs]  = None
+    ) extends Model
+
+  case class ComposedModel
+    (
+      id           : String
+    , id2          : String
+    , description  : Option[String]        = None
+    , allOf        : List[Model]           = Nil
+    , parent       : Option[Model]         = None
+    , child        : Option[Model]         = None
+    , interfaces   : List[RefModel]        = Nil
+    , properties   : Map[String, Property] = Map.empty
+    , example      : Option[String]        = None
+    , externalDocs : Option[ExternalDocs]  = None
+    ) extends Model
+
+  case class RefModel
+    (
+      id           : String
+    , id2          : String
+    , ref          : String
+    , description  : Option[String]        = None
+    , properties   : Map[String, Property] = Map.empty
+    , example      : Option[String]        = None
+    , externalDocs : Option[ExternalDocs]  = None
+    ) extends Model
+
+  sealed trait Parameter {
+    def in: String
+    def name: String
+    def access: Option[String]
+    def description: Option[String]
+    def required: Boolean
+    def vendorExtensions: Map[String, Any]
+
+    def withDesc(desc: Option[String]): Parameter
+  }
+
+  implicit val parameterEncoder: Encoder[Parameter] = {
+    case p: BodyParameter => implicitly[Encoder[BodyParameter]].apply(p)
+    case p: NonBodyParameter => implicitly[Encoder[NonBodyParameter]].apply(p)
+  }
+
+  case class BodyParameter
+    (
+      name             : String
+    , schema           : Option[Model]    = None
+    , description      : Option[String]   = None
+    , required         : Boolean          = false
+    , access           : Option[String]   = None
+    , vendorExtensions : Map[String, Any] = Map.empty
+    , in               : String           = "body"
+    ) extends Parameter{
+
+      def withDesc(desc: Option[String]): BodyParameter = copy(description = desc)
+    }
+
+  case class NonBodyParameter
+    (
+      in: String
+    , name: String
+    , `type`: Option[String] = None
+    , format: Option[String] = None
+    , collectionFormat: Option[String] = None
+    , items: Option[Property] = None
+    , default: Option[Any] = None
+    , description: Option[String] = None
+    , required: Boolean = false
+    , access: Option[String] = None
+    , vendorExtensions: Map[String, Any] = Map.empty
+    , enums: List[String] = List.empty
+    ) extends Parameter{
+      def withDesc(desc: Option[String]): NonBodyParameter = copy(description = desc)
+    }
+
+  implicit val propertyEncoder: Encoder[Property] = {
+    case p: AbstractProperty => implicitly[Encoder[AbstractProperty]].apply(p)
+    case p: ObjectProperty => implicitly[Encoder[ObjectProperty]].apply(p)
+    case p: MapProperty => implicitly[Encoder[MapProperty]].apply(p)
+    case p: ArrayProperty => implicitly[Encoder[ArrayProperty]].apply(p)
+    case p: RefProperty => implicitly[Encoder[RefProperty]].apply(p)
+    case p: StringProperty => implicitly[Encoder[StringProperty]].apply(p)
+  }
+
+  sealed trait Property {
+    def `type`: String
+    def required: Boolean
+    def title: Option[String]
+    def description: Option[String]
+    def format: Option[String]
+
+    def withRequired(required: Boolean): Property
+  }
+
+  case class AbstractProperty
+  (
+    `type`        : String         = null
+    , $ref        : Option[String] = None
+    , required    : Boolean        = false
+    , title       : Option[String] = None
+    , description : Option[String] = None
+    , format      : Option[String] = None
+  ) extends Property {
+
+    def withRequired(required: Boolean): AbstractProperty =
+      copy(required = required)
+  }
+
+  implicit val abstractPropertyEncoder: Encoder[AbstractProperty] = semiauto.deriveEncoder
+
+  case class ObjectProperty
+  (
+      required    : Boolean        = false
+    , title       : Option[String] = None
+    , description : Option[String] = None
+    , format      : Option[String] = None
+    , properties  : Map[String, Property] = Map.empty
+    , `type`      : String         = "object"
+  ) extends Property {
+
+    def withRequired(required: Boolean): ObjectProperty =
+      copy(required = required)
+  }
+
+  implicit val objectPropertyEncoder: Encoder[ObjectProperty] = semiauto.deriveEncoder
+
+  case class MapProperty
+  (
+      additionalProperties  : Property
+    , required              : Boolean        = false
+    , title                 : Option[String] = None
+    , description           : Option[String] = None
+    , format                : Option[String] = None
+    , `type`                : String         = "object"
+  ) extends Property {
+
+    def withRequired(required: Boolean): MapProperty =
+      copy(required = required)
+  }
+
+  implicit val mapPropertyEncoder: Encoder[MapProperty] = semiauto.deriveEncoder
+
+  case class ArrayProperty
+  (
+      items       : Property
+    , uniqueItems : Boolean        = false
+    , required    : Boolean        = true
+    , title       : Option[String] = None
+    , description : Option[String] = None
+    , format      : Option[String] = None
+    , `type`      : String         = "array"
+  ) extends Property {
+
+    def withRequired(required: Boolean): ArrayProperty =
+      this.copy(required = required)
+  }
+
+  implicit val arrayPropertyEncoder: Encoder[ArrayProperty] = semiauto.deriveEncoder
+
+  case class RefProperty
+  (
+      ref         : String
+    , required    : Boolean        = false
+    , title       : Option[String] = None
+    , description : Option[String] = None
+    , format      : Option[String] = None
+    , `type`      : String         = "ref"
+  ) extends Property {
+
+    def withRequired(required: Boolean): RefProperty =
+      copy(required = required)
+  }
+
+  implicit val refPropertyEncoder: Encoder[RefProperty] = semiauto.deriveEncoder
+
+  case class StringProperty
+    (
+      title       : Option[String] = None
+    , description : Option[String] = None
+    , format      : Option[String] = None
+    , required    : Boolean = false
+    , enums       : Set[String]
+    , minLength   : Option[Int]    = None
+    , maxLength   : Option[Int]    = None
+    , pattern     : Option[String] = None
+    , default     : Option[String] = None
+    , `type`      : String         = "string"
+    ) extends Property {
+
+    def withRequired(required: Boolean): StringProperty =
+      copy(required = required)
+  }
+
+  implicit val stringPropertyEncoder: Encoder[StringProperty] = semiauto.deriveEncoder
+
+  case class ExternalDocs
+    (
+      description : String
+    , url         : String
+    )
+}
