@@ -117,12 +117,12 @@ object Swaggerify {
   implicit val swaggerifyBoolean: Swaggerify[Boolean] = swaggerifyAsSimpleType("boolean")
   implicit val swaggerifyJBoolean: Swaggerify[java.lang.Boolean] = swaggerifyAsSimpleType("boolean")
 
-  // LocalDate and ZonedDateTime are the java types that match the swagger definitions. see:
+  // LocalDate and OffsetDateTime are the java types that match the swagger definitions. see:
   // https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md
   // https://xml2rfc.tools.ietf.org/public/rfc/html/rfc3339.html#anchor14
   // Other java.time types can be added by users as needed.
   implicit val swaggerifyLocalDate: Swaggerify[java.time.LocalDate] = swaggerifyAsSimpleType("string", Some("date"))
-  implicit val swaggerifyZonedDateTime: Swaggerify[java.time.ZonedDateTime] = swaggerifyAsSimpleType("string", Some("date-time"))
+  implicit val swaggerifyOffsetDateTime: Swaggerify[java.time.OffsetDateTime] = swaggerifyAsSimpleType("string", Some("date-time"))
 
   implicit def swaggerifyFileResponse[T]: Swaggerify[SwaggerFileResponse[T]] = swaggerifyAsSimpleType("file")
 
