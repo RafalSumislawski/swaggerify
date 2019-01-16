@@ -1,8 +1,9 @@
 package swaggerify
 
 import magnolia._
-import org.http4s.rho.swagger._
-import org.http4s.rho.swagger.models._
+import swaggerify.models.NonBodyParameter
+import swaggerify.models._
+import TypeExtensions._
 
 import scala.language.experimental.macros
 import scala.reflect.runtime.universe._
@@ -25,7 +26,7 @@ trait Swaggerify[T] {
   def asFormParameter(name: String, description: Option[String] = None): NonBodyParameter
   def asHeaderParameter(name: String, description: Option[String] = None, hasDefault: Boolean = false): NonBodyParameter
   def asPathParameter(name: String, description: Option[String] = None): NonBodyParameter
-  def asQueryParameter(name: String, description: Option[String] = None, default: Option[T] = None): NonBodyParameter
+  def asQueryParameter(name: String, description: Option[String] = None, default: Option[Default[T]] = None): NonBodyParameter
   // as*Parameter should not refer to any models. so there's no *Dependencies method for them
 }
 
@@ -40,7 +41,7 @@ case class Swg[T](asProperty: Property, asModel: Option[Model], modelDependencie
     }
 
   override def asBodyParameter(name: String = "body", description: Option[String] = None): BodyParameter =
-    BodyParameter(name = Some(name), description = description, schema = asModel)
+    BodyParameter(name = name, description = description, schema = asModel)
 
   override def bodyParameterDependencies: Set[Model] = modelDependencies
 
@@ -56,10 +57,10 @@ case class Swg[T](asProperty: Property, asModel: Option[Model], modelDependencie
   override def asPathParameter(name: String, description: Option[String] = None): NonBodyParameter =
     asParameter("path", name, description, default = None).copy(required = true)
 
-  override def asQueryParameter(name: String, description: Option[String] = None, default: Option[T] = None): NonBodyParameter =
+  override def asQueryParameter(name: String, description: Option[String] = None, default: Option[Default[T]] = None): NonBodyParameter =
     asParameter("query", name, description, default).copy(collectionFormat = Some("multi"))
 
-  def asParameter(in: String, name: String, description: Option[String], default: Option[T]): NonBodyParameter = {
+  def asParameter(in: String, name: String, description: Option[String], default: Option[Default[T]]): NonBodyParameter = {
     val base = NonBodyParameter(in = in, name = name, description = description,
       default = default,
       `type` = Some(asProperty.`type`),
@@ -91,7 +92,7 @@ object Swaggerify {
     swaggerifyAsEmptyObject(tt.tpe.fullName, tt.tpe.simpleName)
 
   def swaggerifyAsEmptyObject[T](fullTypeName: String, simpleTypeName: String): Swaggerify[T] = {
-    val model = ModelImpl(id = fullTypeName, id2 = simpleTypeName, description = Some(simpleTypeName), `type` = Some("object"))
+    val model = ModelImpl(id = fullTypeName, id2 = simpleTypeName, `type` = "object", description = Some(simpleTypeName))
     Swg(asProperty = RefProperty(simpleTypeName), asModel = Some(model), modelDependencies = Set.empty)
   }
 
@@ -124,12 +125,10 @@ object Swaggerify {
   implicit val swaggerifyLocalDate: Swaggerify[java.time.LocalDate] = swaggerifyAsSimpleType("string", Some("date"))
   implicit val swaggerifyOffsetDateTime: Swaggerify[java.time.OffsetDateTime] = swaggerifyAsSimpleType("string", Some("date-time"))
 
-  implicit def swaggerifyFileResponse[T]: Swaggerify[SwaggerFileResponse[T]] = swaggerifyAsSimpleType("file")
-
   def swaggerifyAsSimpleType[T](`type`: String, format: Option[String] = None): Swaggerify[T] =
     Swg(
-      asProperty = AbstractProperty(`type` = `type`, format = format, required = true),
-      asModel = Some(ModelImpl(id = `type`, id2 = `type`, `type` = Some(`type`), description = Some(s"${`type`}:$format"), isSimple = true)),
+      asProperty = AbstractProperty(`type` = `type`, format = format),
+      asModel = Some(ModelImpl(id = `type`, id2 = `type`, `type` = `type`, description = Some(s"${`type`}:$format"))),
       modelDependencies = Set.empty
     )
 
@@ -158,7 +157,7 @@ object Swaggerify {
   def swaggerifyAsArray[T, I: Swaggerify](uniqueItems: Boolean = false): Swaggerify[T] =
     Swg(
       asProperty = ArrayProperty(Swaggerify[I].asProperty, uniqueItems = uniqueItems),
-      asModel = Some(ArrayModel(id = null, id2 = null, `type` = Some("array"), items = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
+      asModel = Some(ArrayModel(id = null, id2 = null, items = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
       modelDependencies = Swaggerify[I].propertyDependencies
     )
 
@@ -175,7 +174,7 @@ object Swaggerify {
   def swaggerifyAsMap[T, I: Swaggerify]: Swaggerify[T] =
     Swg(
       asProperty = MapProperty(Swaggerify[I].asProperty, required = true),
-      asModel = Some(ModelImpl(id = null, id2 = null, `type` = Some("object"), additionalProperties = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
+      asModel = Some(ModelImpl(id = null, id2 = null, `type` = "object", additionalProperties = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
       modelDependencies = Swaggerify[I].propertyDependencies
     )
 
@@ -187,16 +186,13 @@ object Swaggerify {
       id = s"scala.$id2",
       id2 = id2,
       description = Some(id2),
-      `type` = Some("object"),
+      `type` = "object",
       properties = Map("left" -> Swaggerify[L].asProperty.withRequired(false), "right" -> Swaggerify[R].asProperty.withRequired(false)) // FIXME strange things will happen with Either[Option[L], R] etc.
     )
     Swg(RefProperty(model.id2), Some(model), Swaggerify[L].propertyDependencies ++ Swaggerify[R].propertyDependencies)
   }
 
-  // TODO consider:
-  // Effect
-  // Stream
-  // Either, Try
+  // TODO consider: Effect, Stream, Try, Files
 
   type Typeclass[T] = Swaggerify[T]
 
@@ -208,7 +204,7 @@ object Swaggerify {
     } else {
       val model = ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short,
         description = Some(ctx.typeName.short),
-        `type` = Some("object"),
+        `type` = "object",
         properties = ctx.parameters.map(param => param.label -> param.typeclass.asProperty).toMap
       )
 
@@ -228,9 +224,9 @@ object Swaggerify {
     val discriminatorValues = ctx.subtypes.map(_.typeclass.asModel.get.id2).toSet
       val ownModel = ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short,
         description = Some(ctx.typeName.short),
-        `type` = Some("object"),
+        `type` = "object",
         discriminator = Some(discriminatorName),
-        properties = Map(discriminatorName -> StringProperty(required = true, enums = discriminatorValues))
+        properties = Map(discriminatorName -> StringProperty(enums = discriminatorValues))
       )
 
       val ownModelRef = RefModel(ownModel.id, ownModel.id2, ownModel.id2)

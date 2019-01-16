@@ -1,6 +1,6 @@
 package swaggerify
 
-import io.circe.Encoder
+import io.circe.{Encoder, Json}
 import io.circe.generic.auto._
 import io.circe.generic.semiauto
 
@@ -66,9 +66,8 @@ package object models {
     , tokenUrl         : String
     , flow             : String
     , scopes           : Map[String, String]
-    ) extends SecuritySchemeDefinition {
-    override val `type` = "oauth2"
-  }
+    , `type`           : String = "oauth2"
+    ) extends SecuritySchemeDefinition
 
   case class OAuth2VendorExtensionsDefinition
   (
@@ -77,21 +76,19 @@ package object models {
     , flow             : String
     , scopes           : Map[String, String]
     , tokenUrl         : Option[String] = None
-  ) extends SecuritySchemeDefinition {
-    override val `type` = "oauth2"
-  }
+    , `type`           : String = "oauth2"
+  ) extends SecuritySchemeDefinition
 
   case class ApiKeyAuthDefinition
   (
     name : String
     , in   : In
     , description: Option[String] = None
-  ) extends SecuritySchemeDefinition {
-    override val `type` = "apiKey"
-  }
+    , `type` : String = "apiKey"
+  ) extends SecuritySchemeDefinition
 
-  case object BasicAuthDefinition extends SecuritySchemeDefinition {
-    override val `type` = "basic"
+  case class BasicAuthDefinition(`type`: String = "basic") extends SecuritySchemeDefinition {
+
   }
 
   sealed trait In
@@ -99,7 +96,6 @@ package object models {
     case object HEADER extends In
     case object QUERY  extends In
   }
-
 
   case class SecurityScope
     (
@@ -140,7 +136,7 @@ package object models {
   case class Response
     (
       description : String
-    , schema      : Option[Property]      = None
+    , schema      : Option[Model]      = None
     , examples    : Map[String, String]   = Map.empty
     , headers     : Map[String, Property] = Map.empty
     )
@@ -165,12 +161,11 @@ package object models {
     (
       id                   : String
     , id2                  : String
+    , `type`               : String
     , description          : Option[String]        = None
-    , `type`               : Option[String]        = None
     , name                 : Option[String]        = None
     , required             : List[String]          = Nil
     , properties           : Map[String, Property] = Map.empty
-    , isSimple             : Boolean               = false
     , example              : Option[String]        = None
     , additionalProperties : Option[Property]      = None
     , discriminator        : Option[String]        = None
@@ -182,7 +177,7 @@ package object models {
       id           : String
     , id2          : String
     , description  : Option[String]        = None
-    ,`type`        : Option[String]        = None
+    ,`type`        : String                = "array"
     , properties   : Map[String, Property] = Map.empty
     , items        : Option[Property]      = None
     , example      : Option[String]        = None
@@ -235,14 +230,16 @@ package object models {
       name             : String
     , schema           : Option[Model]    = None
     , description      : Option[String]   = None
-    , required         : Boolean          = false
+    , required         : Boolean          = true
     , access           : Option[String]   = None
-    , vendorExtensions : Map[String, Any] = Map.empty
+    , vendorExtensions : Map[String, Json] = Map.empty
     , in               : String           = "body"
     ) extends Parameter{
 
       def withDesc(desc: Option[String]): BodyParameter = copy(description = desc)
     }
+
+  implicit val bodyParameterEncoder: Encoder[BodyParameter] = semiauto.deriveEncoder
 
   case class NonBodyParameter
     (
@@ -252,24 +249,25 @@ package object models {
     , format: Option[String] = None
     , collectionFormat: Option[String] = None
     , items: Option[Property] = None
-    , default: Option[Any] = None
+    , default: Option[Default[_]] = None
     , description: Option[String] = None
-    , required: Boolean = false
+    , required: Boolean = true
     , access: Option[String] = None
-    , vendorExtensions: Map[String, Any] = Map.empty
+    , vendorExtensions: Map[String, Json] = Map.empty
     , enums: List[String] = List.empty
     ) extends Parameter{
       def withDesc(desc: Option[String]): NonBodyParameter = copy(description = desc)
     }
 
-  implicit val propertyEncoder: Encoder[Property] = {
-    case p: AbstractProperty => implicitly[Encoder[AbstractProperty]].apply(p)
-    case p: ObjectProperty => implicitly[Encoder[ObjectProperty]].apply(p)
-    case p: MapProperty => implicitly[Encoder[MapProperty]].apply(p)
-    case p: ArrayProperty => implicitly[Encoder[ArrayProperty]].apply(p)
-    case p: RefProperty => implicitly[Encoder[RefProperty]].apply(p)
-    case p: StringProperty => implicitly[Encoder[StringProperty]].apply(p)
+  implicit val nonBodyParameterEncoder: Encoder[NonBodyParameter] = semiauto.deriveEncoder
+
+  case class Default[T](value: T)(implicit encoder: Encoder[T]){
+    def encode(): Json = encoder.apply(value)
   }
+
+  implicit val defaultUnderscoreEncoder: Encoder[Default[_]] = d => d.encode()
+
+  implicit def defaultEncoder[T]: Encoder[Default[T]] = d => d.encode()
 
   sealed trait Property {
     def `type`: String
@@ -281,11 +279,21 @@ package object models {
     def withRequired(required: Boolean): Property
   }
 
+  implicit val propertyEncoder: Encoder[Property] = {
+    case p: AbstractProperty => implicitly[Encoder[AbstractProperty]].apply(p)
+    case p: ObjectProperty => implicitly[Encoder[ObjectProperty]].apply(p)
+    case p: MapProperty => implicitly[Encoder[MapProperty]].apply(p)
+    case p: ArrayProperty => implicitly[Encoder[ArrayProperty]].apply(p)
+    case p: RefProperty => implicitly[Encoder[RefProperty]].apply(p)
+    case p: StringProperty => implicitly[Encoder[StringProperty]].apply(p)
+  }
+
+
   case class AbstractProperty
   (
     `type`        : String         = null
     , $ref        : Option[String] = None
-    , required    : Boolean        = false
+    , required    : Boolean        = true
     , title       : Option[String] = None
     , description : Option[String] = None
     , format      : Option[String] = None
@@ -299,7 +307,7 @@ package object models {
 
   case class ObjectProperty
   (
-      required    : Boolean        = false
+      required    : Boolean        = true
     , title       : Option[String] = None
     , description : Option[String] = None
     , format      : Option[String] = None
@@ -316,7 +324,7 @@ package object models {
   case class MapProperty
   (
       additionalProperties  : Property
-    , required              : Boolean        = false
+    , required              : Boolean        = true
     , title                 : Option[String] = None
     , description           : Option[String] = None
     , format                : Option[String] = None
@@ -349,7 +357,7 @@ package object models {
   case class RefProperty
   (
       ref         : String
-    , required    : Boolean        = false
+    , required    : Boolean        = true
     , title       : Option[String] = None
     , description : Option[String] = None
     , format      : Option[String] = None
@@ -367,7 +375,7 @@ package object models {
       title       : Option[String] = None
     , description : Option[String] = None
     , format      : Option[String] = None
-    , required    : Boolean = false
+    , required    : Boolean        = true
     , enums       : Set[String]
     , minLength   : Option[Int]    = None
     , maxLength   : Option[Int]    = None

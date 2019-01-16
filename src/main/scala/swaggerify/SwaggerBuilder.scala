@@ -1,11 +1,9 @@
 package swaggerify
 
-import io.swagger.models.parameters.Parameter
-import io.swagger.models.{HttpMethod, Model, Operation, Swagger}
-import io.swagger.{models => jm}
+import io.swagger.models.HttpMethod
 import swaggerify.SwaggerBuilder._
+import swaggerify.models._
 
-import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 case class SwaggerBuilder(routes: Seq[Route] = Vector.empty) {
@@ -15,10 +13,7 @@ case class SwaggerBuilder(routes: Seq[Route] = Vector.empty) {
     val paths = makePaths(routes)
     val definitions = makeModels(routes)
 
-    val swagger = new jm.Swagger
-    swagger.setPaths(paths.asJava)
-    swagger.setDefinitions((collection.mutable.Map() ++ definitions).asJava)
-    swagger
+    Swagger(paths = paths, definitions = definitions)
   }
 
   private def makeModels(routes: Seq[Route]): Map[String, Model] = {
@@ -27,42 +22,46 @@ case class SwaggerBuilder(routes: Seq[Route] = Vector.empty) {
     }.build()
   }
 
-  private def makePaths(routes: Seq[Route]): Map[String, jm.Path] = {
+  private def makePaths(routes: Seq[Route]): Map[String, models.Path] = {
     routes.groupBy(r => r.path).map { case (path, routes) =>
       val pathString = makePathString(path)
       val parameters = makePathParameters(path)
       val operations = makeOperations(routes)
 
-      val jPath = new jm.Path()
-      jPath.setParameters(parameters.toBuffer.asJava)
-      operations.foreach { case (method, op) => jPath.set(method, op) }
-
-      pathString -> jPath
+      val modelPath = models.Path(parameters = parameters.toList)
+      val modelPath2 = operations.foldLeft(modelPath) { (p, mo) =>
+        val (method, operation) = mo
+        method match {
+          case "get" => p.copy(get = Some(operation))
+          case "put" => p.copy(put = Some(operation))
+          case "post" => p.copy(post = Some(operation))
+          case "delete" => p.copy(delete = Some(operation))
+          case "patch" => p.copy(patch = Some(operation))
+          case "options" => p.copy(options = Some(operation))
+          case "head" => p.copy(head = Some(operation))
+        }
+      }
+      pathString -> modelPath2
     }
   }
 
-  private def makePathString(path: Path): String = {
+  private def makePathString(path: SwaggerBuilder.Path): String = {
     path.segments.map {
       case PathString(s) => s
       case PathVar(name, _) => s"{$name}"
     }.mkString("/", "/", "")
   }
 
-  private def makePathParameters(path: Path): Seq[Parameter] =
-    path.segments.collect { case p: PathVar[_] => p.swaggerify.asPathParameter(p.name, p.description).toJModel }
+  private def makePathParameters(path: SwaggerBuilder.Path): Seq[Parameter] =
+    path.segments.collect { case p: PathVar[_] => p.swaggerify.asPathParameter(p.name, p.description) }
 
   private def makeOperations(routes: Seq[Route]): Seq[(String, Operation)] = {
     routes.map { route =>
       val method = route.method.name().toLowerCase
-      val operation = new jm.Operation()
-      operation.setOperationId(route.name)
-      operation.setDescription(route.description.orNull)
-      route.responses.foreach { resp =>
-        val response = new jm.Response()
-        response.setDescription(resp.description)
-        response.setResponseSchema(resp.swaggerify.asModel.get.toJModel)
-        operation.addResponse(resp.code.toString, response)
-      }
+      val responses = route.responses.map { resp =>
+        resp.code.toString -> models.Response(description = resp.description, schema = resp.swaggerify.asModel)
+      }.toMap
+      val operation = Operation(operationId = Some(route.name), description = route.description, responses = responses)
 
       (method, operation)
     }
