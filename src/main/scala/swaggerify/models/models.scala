@@ -8,8 +8,8 @@ package object models {
 
   case class Swagger
     (
-      swagger             : String                                = "2.0"
-    , info                : Option[Info]                          = None
+      info                : Info
+    , swagger             : String                                = "2.0"
     , host                : Option[String]                        = None
     , basePath            : Option[String]                        = None
     , schemes             : List[Scheme]                          = Nil
@@ -20,8 +20,7 @@ package object models {
     , definitions         : Map[String, Model]                    = Map.empty
     , parameters          : Map[String, Parameter]                = Map.empty
     , externalDocs        : Option[ExternalDocs]                  = None
-    , security            : Map[String, List[String]]             = Map.empty
-    , vendorExtensions    : Map[String, Json]                      = Map.empty
+    , security            : List[String]                          = Nil
     )
 
   implicit val swaggerEncoder: Encoder[Swagger] = semiauto.deriveEncoder
@@ -34,7 +33,6 @@ package object models {
     , termsOfService   : Option[String]   = None
     , contact          : Option[Contact]  = None
     , license          : Option[License]  = None
-    , vendorExtensions : Map[String, Json] = Map.empty
     )
 
   implicit val infoEncoder: Encoder[Info] = semiauto.deriveEncoder
@@ -64,7 +62,7 @@ package object models {
     case object WSS   extends Scheme
   }
 
-  implicit val schemeEncoder: Encoder[Scheme] = implicitly[Encoder[String]].contramap(_.toString)
+  implicit val schemeEncoder: Encoder[Scheme] = implicitly[Encoder[String]].contramap(_.toString.toLowerCase)
 
   sealed trait SecuritySchemeDefinition {
     def `type`: String
@@ -112,7 +110,7 @@ package object models {
     case object QUERY  extends In
   }
 
-  implicit val inEncoder: Encoder[In] = implicitly[Encoder[String]].contramap(_.toString)
+  implicit val inEncoder: Encoder[In] = implicitly[Encoder[String]].contramap(_.toString.toLowerCase)
 
   case class SecurityScope
     (
@@ -132,7 +130,6 @@ package object models {
     , options          : Option[Operation] = None
     , head             : Option[Operation] = None
     , parameters       : List[Parameter]   = Nil
-    , vendorExtensions : Map[String, Json]  = Map.empty
     )
 
   implicit val pathEncoder: Encoder[Path] = semiauto.deriveEncoder
@@ -151,7 +148,6 @@ package object models {
     , security         : List[Map[String, List[String]]] = Nil
     , externalDocs     : Option[ExternalDocs]            = None
     , deprecated       : Boolean                         = false
-    , vendorExtensions : Map[String, Json]                = Map.empty
     )
 
   implicit val operationEncoder: Encoder[Operation] = semiauto.deriveEncoder

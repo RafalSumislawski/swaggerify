@@ -8,11 +8,11 @@ import scala.language.implicitConversions
 case class SwaggerBuilder(routes: Seq[Route] = Vector.empty) {
   def add(r: Route): SwaggerBuilder = SwaggerBuilder(routes :+ r)
 
-  def build(): Swagger = {
+  def build(info: Info): Swagger = {
     val paths = makePaths(routes)
     val definitions = makeModels(routes)
 
-    Swagger(paths = paths, definitions = definitions)
+    Swagger(info = info, paths = paths, definitions = definitions)
   }
 
   private def makeModels(routes: Seq[Route]): Map[String, Model] = {
