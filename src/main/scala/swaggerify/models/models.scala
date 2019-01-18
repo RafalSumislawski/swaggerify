@@ -21,8 +21,10 @@ package object models {
     , parameters          : Map[String, Parameter]                = Map.empty
     , externalDocs        : Option[ExternalDocs]                  = None
     , security            : Map[String, List[String]]             = Map.empty
-    , vendorExtensions    : Map[String, Any]                      = Map.empty
+    , vendorExtensions    : Map[String, Json]                      = Map.empty
     )
+
+  implicit val swaggerEncoder: Encoder[Swagger] = semiauto.deriveEncoder
 
   case class Info
     (
@@ -32,8 +34,10 @@ package object models {
     , termsOfService   : Option[String]   = None
     , contact          : Option[Contact]  = None
     , license          : Option[License]  = None
-    , vendorExtensions : Map[String, Any] = Map.empty
+    , vendorExtensions : Map[String, Json] = Map.empty
     )
+
+  implicit val infoEncoder: Encoder[Info] = semiauto.deriveEncoder
 
   case class Contact
     (
@@ -42,11 +46,15 @@ package object models {
     , email : Option[String] = None
     )
 
+  implicit val contactEncoder: Encoder[Contact] = semiauto.deriveEncoder
+
   case class License
     (
       name  : String
     , url   : String
     )
+
+  implicit val licenseEncoder: Encoder[License] = semiauto.deriveEncoder
 
   sealed trait Scheme
   object Scheme {
@@ -56,8 +64,17 @@ package object models {
     case object WSS   extends Scheme
   }
 
+  implicit val schemeEncoder: Encoder[Scheme] = implicitly[Encoder[String]].contramap(_.toString)
+
   sealed trait SecuritySchemeDefinition {
     def `type`: String
+  }
+
+  implicit val securitySchemeDefinitionEncoder: Encoder[SecuritySchemeDefinition] = {
+    case m: OAuth2Definition => implicitly[Encoder[OAuth2Definition]].apply(m)
+    case m: OAuth2VendorExtensionsDefinition => implicitly[Encoder[OAuth2VendorExtensionsDefinition]].apply(m)
+    case m: ApiKeyAuthDefinition => implicitly[Encoder[ApiKeyAuthDefinition]].apply(m)
+    case m: BasicAuthDefinition => implicitly[Encoder[BasicAuthDefinition]].apply(m)
   }
 
   case class OAuth2Definition
@@ -72,7 +89,7 @@ package object models {
   case class OAuth2VendorExtensionsDefinition
   (
       authorizationUrl : String
-    , vendorExtensions : Map[String, AnyRef]
+    , vendorExtensions : Map[String, Json]
     , flow             : String
     , scopes           : Map[String, String]
     , tokenUrl         : Option[String] = None
@@ -87,9 +104,7 @@ package object models {
     , `type` : String = "apiKey"
   ) extends SecuritySchemeDefinition
 
-  case class BasicAuthDefinition(`type`: String = "basic") extends SecuritySchemeDefinition {
-
-  }
+  case class BasicAuthDefinition(`type`: String = "basic") extends SecuritySchemeDefinition
 
   sealed trait In
   object In {
@@ -97,11 +112,15 @@ package object models {
     case object QUERY  extends In
   }
 
+  implicit val inEncoder: Encoder[In] = implicitly[Encoder[String]].contramap(_.toString)
+
   case class SecurityScope
     (
       name        : String
     , description : String
     )
+
+  implicit val securityScopeEncoder: Encoder[SecurityScope] = semiauto.deriveEncoder
 
   case class Path
     (
@@ -113,8 +132,10 @@ package object models {
     , options          : Option[Operation] = None
     , head             : Option[Operation] = None
     , parameters       : List[Parameter]   = Nil
-    , vendorExtensions : Map[String, Any]  = Map.empty
+    , vendorExtensions : Map[String, Json]  = Map.empty
     )
+
+  implicit val pathEncoder: Encoder[Path] = semiauto.deriveEncoder
 
   case class Operation
     (
@@ -130,8 +151,10 @@ package object models {
     , security         : List[Map[String, List[String]]] = Nil
     , externalDocs     : Option[ExternalDocs]            = None
     , deprecated       : Boolean                         = false
-    , vendorExtensions : Map[String, Any]                = Map.empty
+    , vendorExtensions : Map[String, Json]                = Map.empty
     )
+
+  implicit val operationEncoder: Encoder[Operation] = semiauto.deriveEncoder
 
   case class Response
     (
@@ -140,6 +163,8 @@ package object models {
     , examples    : Map[String, String]   = Map.empty
     , headers     : Map[String, Property] = Map.empty
     )
+
+  implicit val responseEncoder: Encoder[Response] = semiauto.deriveEncoder
 
   sealed trait Model {
     def id: String
@@ -215,7 +240,7 @@ package object models {
     def access: Option[String]
     def description: Option[String]
     def required: Boolean
-    def vendorExtensions: Map[String, Any]
+    def vendorExtensions: Map[String, Json]
 
     def withDesc(desc: Option[String]): Parameter
   }
@@ -395,4 +420,6 @@ package object models {
       description : String
     , url         : String
     )
+
+  implicit val externalDocsEncoder: Encoder[ExternalDocs] = semiauto.deriveEncoder
 }

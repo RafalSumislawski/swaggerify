@@ -1,6 +1,5 @@
 package swaggerify
 
-import io.swagger.models.HttpMethod
 import swaggerify.SwaggerBuilder._
 import swaggerify.models._
 
@@ -57,7 +56,7 @@ case class SwaggerBuilder(routes: Seq[Route] = Vector.empty) {
 
   private def makeOperations(routes: Seq[Route]): Seq[(String, Operation)] = {
     routes.map { route =>
-      val method = route.method.name().toLowerCase
+      val method = route.method.toLowerCase
       val responses = route.responses.map { resp =>
         resp.code.toString -> models.Response(description = resp.description, schema = resp.swaggerify.asModel)
       }.toMap
@@ -69,7 +68,7 @@ case class SwaggerBuilder(routes: Seq[Route] = Vector.empty) {
 }
 
 object SwaggerBuilder {
-  case class Route(name: String, description: Option[String], method: HttpMethod, path: Path, responses: Response[_]*)
+  case class Route(name: String, description: Option[String], method: String, path: Path, responses: Response[_]*)
 
   case class Response[R](code: Int, description: String)(implicit val swaggerify: Swaggerify[R])
 

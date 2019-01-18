@@ -24,7 +24,7 @@ val circeJava8 = "io.circe" %% "circe-java8" % circeVersion
 val circeYaml = "io.circe" %% "circe-yaml" % "0.9.0"
 val allCirce = Seq(circeGeneric, circeParser, circeJava8, circeYaml)
 
-val magnolia = "com.propensive" %% "magnolia" % "0.10.0"
+val magnolia = ("com.propensive" %% "magnolia" % "0.10.0").excludeAll(ExclusionRule("org.scala-lang", "scala-compiler"))
 
 val swaggerVersion = "1.5.21"
 val swaggerModels = "io.swagger" % "swagger-models" % swaggerVersion
@@ -37,14 +37,14 @@ val http4sCore = "org.http4s" %% "http4s-core" % "0.20.0-M5"
 val rhoSwagger = "org.http4s" %% "rho-swagger" % "0.19.0-M5"
 
 val scalaTest = "org.scalatest" %% "scalatest" % "3.0.5"
-lazy val specs2Version = "4.3.6"
+val specs2Version = "4.3.6"
 val specsCore = "org.specs2" %% "specs2-core" % specs2Version
 val specsScalaCheck = "org.specs2" %% "specs2-scalacheck" % specs2Version
 val allSpecs = Seq(specsCore, specsScalaCheck)
 
 resolvers += Resolver.jcenterRepo
 
-libraryDependencies ++= Seq(scalaReflect, magnolia, swaggerModels, swaggerCore, rhoSwagger, http4sCore, scalaLogging, slf4j) ++ allCirce ++
+libraryDependencies ++= Seq(scalaReflect, magnolia, /*swaggerModels, swaggerCore, rhoSwagger, http4sCore,*/ scalaLogging, slf4j) ++ allCirce ++
   (Seq(log4jApi, log4jSlf4j, lmaxDisruptor, scalaTest, swaggerValidator) ++ allSpecs).map(_ % "test")
 
 scalacOptions ++= Seq(
@@ -55,6 +55,8 @@ scalacOptions ++= Seq(
   "-Xfuture",
   "-Ywarn-unused"
 )
+
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
 
 cancelable in Global := true
 crossPaths := false
