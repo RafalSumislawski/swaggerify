@@ -12,9 +12,9 @@ import swaggerify.validation.SwaggerValidator
 
 class Serialization extends Specification {
 
-  "Swagger model" should {
+  "It" should {
 
-    "Should serialise a swagger model without paths to a valid swagger file" in {
+    "Serialise a swagger model without paths to a valid swagger file" in {
       val swagger = Swagger(
         swagger = "2.0",
         info = Info(
@@ -77,6 +77,28 @@ class Serialization extends Specification {
       write("test2.yaml", swaggerYaml)
       SwaggerValidator.validate(swaggerYaml) must_== Valid(())
     }
+  }
+
+  "Serialise definitions to a valid swagger file" in {
+    val swagger = Swagger(
+      info = Info("title", "version"),
+      definitions = Map(
+        "Foo" -> ModelImpl(
+          "id", "id2",
+          `type` = "object",
+          description = Some("description"),
+          required = List("bar"),
+          properties = Map(
+            "bar" -> AbstractProperty(`type` = "string", required = true),
+            "baz" -> AbstractProperty(`type` = "string", required = false)
+          )
+        )
+      ),
+    )
+
+    val swaggerYaml = toYamlString(swagger)
+    write("test1.yaml", swaggerYaml)
+    SwaggerValidator.validate(swaggerYaml) must_== Valid(())
   }
 
   def toYamlString(swagger: Swagger): String =

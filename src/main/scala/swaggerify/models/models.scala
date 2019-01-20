@@ -1,6 +1,6 @@
 package swaggerify
 
-import io.circe.{Encoder, Json}
+import io.circe.{Encoder, Json, JsonObject}
 import io.circe.generic.auto._
 import io.circe.generic.semiauto
 
@@ -20,10 +20,11 @@ package object models {
     , definitions         : Map[String, Model]                    = Map.empty
     , parameters          : Map[String, Parameter]                = Map.empty
     , externalDocs        : Option[ExternalDocs]                  = None
-    , security            : List[String]                          = Nil
+    , security            : List[SecurityRequirement]             = List.empty
+    , vendorExtensions    : Map[String, Json]                     = Map.empty
     )
 
-  implicit val swaggerEncoder: Encoder[Swagger] = semiauto.deriveEncoder
+  implicit val swaggerEncoder: Encoder[Swagger] = semiauto.deriveEncoder[Swagger].mapJsonObject(mergeInVendorExtensions)
 
   case class Info
     (
@@ -33,9 +34,10 @@ package object models {
     , termsOfService   : Option[String]   = None
     , contact          : Option[Contact]  = None
     , license          : Option[License]  = None
+    , vendorExtensions : Map[String, Json] = Map.empty
     )
 
-  implicit val infoEncoder: Encoder[Info] = semiauto.deriveEncoder
+  implicit val infoEncoder: Encoder[Info] = semiauto.deriveEncoder[Info].mapJsonObject(mergeInVendorExtensions)
 
   case class Contact
     (
@@ -92,7 +94,10 @@ package object models {
     , scopes           : Map[String, String]
     , tokenUrl         : Option[String] = None
     , `type`           : String = "oauth2"
-  ) extends SecuritySchemeDefinition
+  ) extends SecuritySchemeDefinition // TODO explicit encoder
+
+  implicit val oAuth2VendorExtensionsDefinitionEncoder: Encoder[OAuth2VendorExtensionsDefinition] =
+    semiauto.deriveEncoder[OAuth2VendorExtensionsDefinition].mapJsonObject(mergeInVendorExtensions)
 
   case class ApiKeyAuthDefinition
   (
@@ -120,6 +125,8 @@ package object models {
 
   implicit val securityScopeEncoder: Encoder[SecurityScope] = semiauto.deriveEncoder
 
+  type SecurityRequirement = Map[String, List[String]]
+
   case class Path
     (
       get              : Option[Operation] = None
@@ -130,9 +137,10 @@ package object models {
     , options          : Option[Operation] = None
     , head             : Option[Operation] = None
     , parameters       : List[Parameter]   = Nil
+    , vendorExtensions : Map[String, Json]  = Map.empty
     )
 
-  implicit val pathEncoder: Encoder[Path] = semiauto.deriveEncoder
+  implicit val pathEncoder: Encoder[Path] = semiauto.deriveEncoder[Path].mapJsonObject(mergeInVendorExtensions)
 
   case class Operation
     (
@@ -145,12 +153,13 @@ package object models {
     , produces         : List[String]                    = Nil
     , parameters       : List[Parameter]                 = Nil
     , responses        : Map[String, Response]           = Map.empty
-    , security         : List[Map[String, List[String]]] = Nil
+    , security         : List[SecurityRequirement]       = Nil
     , externalDocs     : Option[ExternalDocs]            = None
     , deprecated       : Boolean                         = false
+    , vendorExtensions : Map[String, Json]                = Map.empty
     )
 
-  implicit val operationEncoder: Encoder[Operation] = semiauto.deriveEncoder
+  implicit val operationEncoder: Encoder[Operation] = semiauto.deriveEncoder[Operation].mapJsonObject(mergeInVendorExtensions)
 
   case class Response
     (
@@ -184,7 +193,6 @@ package object models {
     , id2                  : String
     , `type`               : String
     , description          : Option[String]        = None
-    , name                 : Option[String]        = None
     , required             : List[String]          = Nil
     , properties           : Map[String, Property] = Map.empty
     , example              : Option[String]        = None
@@ -192,6 +200,9 @@ package object models {
     , discriminator        : Option[String]        = None
     , externalDocs         : Option[ExternalDocs]  = None
     ) extends Model
+
+  implicit val modelImplEncoder: Encoder[ModelImpl] =
+    semiauto.deriveEncoder[ModelImpl].mapJsonObject(_.remove("id").remove("id2"))
 
   case class ArrayModel
     (
@@ -204,6 +215,9 @@ package object models {
     , example      : Option[String]        = None
     , externalDocs : Option[ExternalDocs]  = None
     ) extends Model
+
+  implicit val arrayModelEncoder: Encoder[ArrayModel] =
+    semiauto.deriveEncoder[ArrayModel].mapJsonObject(_.remove("id").remove("id2"))
 
   case class ComposedModel
     (
@@ -219,6 +233,9 @@ package object models {
     , externalDocs : Option[ExternalDocs]  = None
     ) extends Model
 
+  implicit val composedModelEncoder: Encoder[ComposedModel] =
+    semiauto.deriveEncoder[ComposedModel].mapJsonObject(_.remove("id").remove("id2"))
+
   case class RefModel
     (
       id           : String
@@ -229,6 +246,9 @@ package object models {
     , example      : Option[String]        = None
     , externalDocs : Option[ExternalDocs]  = None
     ) extends Model
+
+  implicit val refModelEncoder: Encoder[RefModel] =
+    semiauto.deriveEncoder[RefModel].mapJsonObject(_.remove("id").remove("id2"))
 
   sealed trait Parameter {
     def in: String
@@ -260,7 +280,7 @@ package object models {
       def withDesc(desc: Option[String]): BodyParameter = copy(description = desc)
     }
 
-  implicit val bodyParameterEncoder: Encoder[BodyParameter] = semiauto.deriveEncoder
+  implicit val bodyParameterEncoder: Encoder[BodyParameter] = semiauto.deriveEncoder[BodyParameter].mapJsonObject(mergeInVendorExtensions)
 
   case class NonBodyParameter
     (
@@ -280,7 +300,7 @@ package object models {
       def withDesc(desc: Option[String]): NonBodyParameter = copy(description = desc)
     }
 
-  implicit val nonBodyParameterEncoder: Encoder[NonBodyParameter] = semiauto.deriveEncoder
+  implicit val nonBodyParameterEncoder: Encoder[NonBodyParameter] = semiauto.deriveEncoder[NonBodyParameter].mapJsonObject(mergeInVendorExtensions)
 
   case class Default[T](value: T)(implicit encoder: Encoder[T]){
     def encode(): Json = encoder.apply(value)
@@ -418,4 +438,11 @@ package object models {
     )
 
   implicit val externalDocsEncoder: Encoder[ExternalDocs] = semiauto.deriveEncoder
+
+  private def mergeInVendorExtensions(jo: JsonObject): JsonObject = {
+    jo.apply("vendorExtensions")
+      .flatMap(_.asObject)
+      .map(_.toMap.foldLeft(jo.remove("vendorExtensions"))(_.+:(_)))
+      .getOrElse(jo)
+  }
 }
