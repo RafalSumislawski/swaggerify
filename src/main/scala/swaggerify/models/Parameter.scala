@@ -1,12 +1,44 @@
-package swaggerify
+package swaggerify.models
 
 import io.swagger.models.parameters.AbstractSerializableParameter
 import io.swagger.{models => jm}
-import org.http4s.rho.swagger.models.Property
-import swaggerify.NonBodyParameter.JModelNonBodyParameter
-import swaggerify.NonBodyParameter.JsValue._
+import swaggerify.models.JValue._
+import swaggerify.models.NonBodyParameter.JModelNonBodyParameter
 
-import scala.collection.JavaConverters._
+sealed trait Parameter {
+  def in: String
+  def name: String
+  def access: Option[String]
+  def description: Option[String]
+  def required: Boolean
+  def vendorExtensions: Map[String, Any]
+
+  def toJModel: jm.parameters.Parameter
+}
+
+case class BodyParameter
+(
+    name             : String
+  , schema           : Option[Model]    = None
+  , description      : Option[String]   = None
+  , required         : Boolean          = false
+  , access           : Option[String]   = None
+  , vendorExtensions : Map[String, Any] = Map.empty
+) extends Parameter {
+
+  override val in = "body"
+
+  def toJModel: jm.parameters.Parameter = {
+    val bp = new jm.parameters.BodyParameter
+    bp.setSchema(fromOption(schema.map(_.toJModel)))
+    bp.setName(name)
+    bp.setDescription(fromOption(description))
+    bp.setRequired(required)
+    bp.setAccess(fromOption(access))
+    vendorExtensions.foreach { case (key, value) => bp.setVendorExtension(key, value) }
+    bp
+  }
+}
 
 case class NonBodyParameter(in: String,
                             name: String,
@@ -19,7 +51,7 @@ case class NonBodyParameter(in: String,
                             required: Boolean = false,
                             access: Option[String] = None,
                             vendorExtensions: Map[String, Any] = Map.empty,
-                            enums: List[String] = List.empty) {
+                            enums: List[String] = List.empty) extends Parameter {
 
   def toJModel: jm.parameters.Parameter = {
     val qp = new JModelNonBodyParameter
@@ -43,14 +75,4 @@ object NonBodyParameter {
 
   class JModelNonBodyParameter extends AbstractSerializableParameter[JModelNonBodyParameter]
 
-  object JsValue {
-    def fromOption[A](oa: Option[A]): A =
-      oa.getOrElse(null.asInstanceOf[A])
-
-    def fromList[A](xs: List[A]): java.util.List[A] =
-      if (xs.isEmpty) null else xs.asJava
-
-    def fromMap[A, B](m: Map[A, B]): java.util.Map[A, B] =
-      if (m.isEmpty) null else m.asJava
-  }
 }

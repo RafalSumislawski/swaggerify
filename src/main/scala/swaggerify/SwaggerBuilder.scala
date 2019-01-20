@@ -1,43 +1,46 @@
 package swaggerify
 
-import io.swagger.models.parameters.Parameter
-import io.swagger.models.{HttpMethod, Model, Operation, Swagger}
-import io.swagger.{models => jm}
+import swaggerify.{models => m}
 import swaggerify.SwaggerBuilder._
 
-import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 case class SwaggerBuilder(routes: Seq[Route] = Vector.empty) {
   def add(r: Route): SwaggerBuilder = SwaggerBuilder(routes :+ r)
 
-  def build(): Swagger = {
+  def build(info: m.Info): m.Swagger = {
     val paths = makePaths(routes)
     val definitions = makeModels(routes)
 
-    val swagger = new jm.Swagger
-    swagger.setPaths(paths.asJava)
-    swagger.setDefinitions((collection.mutable.Map() ++ definitions).asJava)
-    swagger
+    m.Swagger(
+      info = Some(info), // it shouldn't be optional. It's not according to the specs and the validator.
+      paths = paths,
+      definitions = definitions
+    )
   }
 
-  private def makeModels(routes: Seq[Route]): Map[String, Model] = {
+  private def makeModels(routes: Seq[Route]): Map[String, m.Model] = {
     routes.foldLeft(SwaggerDefinitionsBuilder()) { (builder, route) =>
       route.responses.foldLeft(builder)((builder, response) => builder.addModelType(response.swaggerify))
     }.build()
   }
 
-  private def makePaths(routes: Seq[Route]): Map[String, jm.Path] = {
+  private def makePaths(routes: Seq[Route]): Map[String, m.Path] = {
     routes.groupBy(r => r.path).map { case (path, routes) =>
       val pathString = makePathString(path)
       val parameters = makePathParameters(path)
       val operations = makeOperations(routes)
 
-      val jPath = new jm.Path()
-      jPath.setParameters(parameters.toBuffer.asJava)
-      operations.foreach { case (method, op) => jPath.set(method, op) }
-
-      pathString -> jPath
+      pathString -> m.Path(
+        parameters = parameters,
+        get = operations.get("get"),
+        put = operations.get("put"),
+        delete = operations.get("delete"),
+        post = operations.get("post"),
+        patch = operations.get("patch"),
+        options = operations.get("options"),
+        head = operations.get("head")
+        )
     }
   }
 
@@ -48,29 +51,36 @@ case class SwaggerBuilder(routes: Seq[Route] = Vector.empty) {
     }.mkString("/", "/", "")
   }
 
-  private def makePathParameters(path: Path): Seq[Parameter] =
-    path.segments.collect { case p: PathVar[_] => p.swaggerify.asPathParameter(p.name, p.description).toJModel }
+  private def makePathParameters(path: Path): List[m.Parameter] =
+    path.segments.collect { case p: PathVar[_] => p.swaggerify.asPathParameter(p.name, p.description) }.toList
 
-  private def makeOperations(routes: Seq[Route]): Seq[(String, Operation)] = {
+  private def makeOperations(routes: Seq[Route]): Map[String, m.Operation] = {
     routes.map { route =>
-      val method = route.method.name().toLowerCase
-      val operation = new jm.Operation()
-      operation.setOperationId(route.name)
-      operation.setDescription(route.description.orNull)
-      route.responses.foreach { resp =>
-        val response = new jm.Response()
-        response.setDescription(resp.description)
-        response.setResponseSchema(resp.swaggerify.asModel.get.toJModel)
-        operation.addResponse(resp.code.toString, response)
-      }
+      val method = route.method.toLowerCase
+      val responses = makeResponses(route)
+
+      val operation = m.Operation(
+        operationId = Some(route.name),
+        description = route.description,
+        responses = responses
+      )
 
       (method, operation)
     }
+  }.toMap
+
+  private def makeResponses(route: Route): Map[String, m.Response] = {
+    route.responses.map{ resp =>
+      resp.code.toString -> m.Response(
+        description = resp.description,
+        schema = resp.swaggerify.asModel
+      )
+    }.toMap
   }
 }
 
 object SwaggerBuilder {
-  case class Route(name: String, description: Option[String], method: HttpMethod, path: Path, responses: Response[_]*)
+  case class Route(name: String, description: Option[String], method: String, path: Path, responses: Response[_]*)
 
   case class Response[R](code: Int, description: String)(implicit val swaggerify: Swaggerify[R])
 

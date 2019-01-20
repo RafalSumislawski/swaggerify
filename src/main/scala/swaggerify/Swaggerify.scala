@@ -1,8 +1,8 @@
 package swaggerify
 
 import magnolia._
-import org.http4s.rho.swagger._
-import org.http4s.rho.swagger.models._
+import swaggerify.models._
+import swaggerify.models.NonBodyParameter
 
 import scala.language.experimental.macros
 import scala.reflect.runtime.universe._
@@ -40,7 +40,7 @@ case class Swg[T](asProperty: Property, asModel: Option[Model], modelDependencie
     }
 
   override def asBodyParameter(name: String = "body", description: Option[String] = None): BodyParameter =
-    BodyParameter(name = Some(name), description = description, schema = asModel)
+    BodyParameter(name = name,description = description, schema = asModel)
 
   override def bodyParameterDependencies: Set[Model] = modelDependencies
 

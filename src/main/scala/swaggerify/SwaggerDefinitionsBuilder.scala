@@ -1,7 +1,6 @@
 package swaggerify
 
-import io.swagger.{models => jm}
-import org.http4s.rho.swagger.models.{ComposedModel, Model}
+import swaggerify.models.{ComposedModel, Model}
 
 case class SwaggerDefinitionsBuilder(models: Set[Model] = Set.empty) {
 
@@ -9,9 +8,9 @@ case class SwaggerDefinitionsBuilder(models: Set[Model] = Set.empty) {
 
   def addPropertyType[T: Swaggerify]: SwaggerDefinitionsBuilder = copy(models ++ Swaggerify[T].propertyDependencies)
 
-  def build(): Map[String, jm.Model] = {
+  def build(): Map[String, Model] = {
     val modelsByNameWithoutDuplicates = dropDuplicatesPreferingComposedModels(models)
-    modelsByNameWithoutDuplicates.map { case (id2, model) => id2 -> model.toJModel }
+    modelsByNameWithoutDuplicates.map { case (id2, model) => id2 -> model }
   }
 
   private def dropDuplicatesPreferingComposedModels(models: Set[Model]): Map[String, Model] = {
