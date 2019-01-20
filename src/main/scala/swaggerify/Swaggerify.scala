@@ -1,8 +1,8 @@
 package swaggerify
 
 import magnolia._
-import swaggerify.models._
-import swaggerify.models.NonBodyParameter
+import swaggerify.TypeExtensions._
+import swaggerify.models.{NonBodyParameter, _}
 
 import scala.language.experimental.macros
 import scala.reflect.runtime.universe._
@@ -124,7 +124,7 @@ object Swaggerify {
   implicit val swaggerifyLocalDate: Swaggerify[java.time.LocalDate] = swaggerifyAsSimpleType("string", Some("date"))
   implicit val swaggerifyOffsetDateTime: Swaggerify[java.time.OffsetDateTime] = swaggerifyAsSimpleType("string", Some("date-time"))
 
-  implicit def swaggerifyFileResponse[T]: Swaggerify[SwaggerFileResponse[T]] = swaggerifyAsSimpleType("file")
+//  implicit def swaggerifyFileResponse[T]: Swaggerify[SwaggerFileResponse[T]] = swaggerifyAsSimpleType("file")
 
   def swaggerifyAsSimpleType[T](`type`: String, format: Option[String] = None): Swaggerify[T] =
     Swg(

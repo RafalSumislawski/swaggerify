@@ -44,7 +44,7 @@ val allSpecs = Seq(specsCore, specsScalaCheck)
 
 resolvers += Resolver.jcenterRepo
 
-libraryDependencies ++= Seq(scalaReflect, magnolia, swaggerModels, swaggerCore, rhoSwagger, http4sCore, scalaLogging, slf4j) ++ allCirce ++
+libraryDependencies ++= Seq(scalaReflect, magnolia, swaggerModels, swaggerCore, /*rhoSwagger, http4sCore,*/ scalaLogging, slf4j) ++ allCirce ++
   (Seq(log4jApi, log4jSlf4j, lmaxDisruptor, scalaTest, swaggerValidator) ++ allSpecs).map(_ % "test")
 
 scalacOptions ++= Seq(
