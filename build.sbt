@@ -24,7 +24,7 @@ val circeJava8 = "io.circe" %% "circe-java8" % circeVersion
 val circeYaml = "io.circe" %% "circe-yaml" % "0.9.0"
 val allCirce = Seq(circeGeneric, circeParser, circeJava8, circeYaml)
 
-val magnolia = "com.propensive" %% "magnolia" % "0.10.0"
+val magnolia = ("com.propensive" %% "magnolia" % "0.10.0").excludeAll(ExclusionRule("org.scala-lang", "scala-compiler"))
 
 val swaggerVersion = "1.5.21"
 val swaggerModels = "io.swagger" % "swagger-models" % swaggerVersion
@@ -53,8 +53,11 @@ scalacOptions ++= Seq(
   "-unchecked",
   "-deprecation",
   "-Xfuture",
-  "-Ywarn-unused"
+  "-Ywarn-unused",
+  "-Xfatal-warnings"
 )
+
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
 
 cancelable in Global := true
 crossPaths := false
