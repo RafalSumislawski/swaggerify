@@ -11,8 +11,8 @@ object `package` {
 
   case class Swagger
   (
-    swagger             : String                                = "2.0"
-    , info                : Option[Info]                          = None
+      info                : Info
+    , swagger             : String                                = "2.0"
     , host                : Option[String]                        = None
     , basePath            : Option[String]                        = None
     , schemes             : List[Scheme]                          = Nil
@@ -30,7 +30,7 @@ object `package` {
     def toJModel: jm.Swagger = {
       val s = new jm.Swagger
 
-      s.info(fromOption(info.map(_.toJModel)))
+      s.info(info.toJModel)
       s.host(fromOption(host))
       s.basePath(fromOption(basePath))
       s.setSchemes(fromList(schemes.map(_.toJModel)))
@@ -263,7 +263,7 @@ object `package` {
     , responses        : Map[String, Response]           = Map.empty
     , security         : List[Map[String, List[String]]] = Nil
     , externalDocs     : Option[ExternalDocs]            = None
-    , deprecated       : Boolean                         = false
+    , deprecated       : Option[Boolean]                 = None
     , vendorExtensions : Map[String, Any]                = Map.empty
   ) {
 
@@ -282,7 +282,7 @@ object `package` {
         m.mapValues(_.asJava).asJava
       }))
       o.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
-      o.setDeprecated(deprecated)
+      o.setDeprecated(fromOption(deprecated.map(_.asInstanceOf[java.lang.Boolean])))
       vendorExtensions.foreach { case (key, value) => o.setVendorExtension(key, value) }
       o
     }

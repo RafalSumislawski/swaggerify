@@ -13,7 +13,7 @@ trait Swaggerify[T] {
   /** If asProperty is used, these are the models it refers to */
   def propertyDependencies: Set[Model]
 
-  def asModel: Option[Model]
+  def asModel: Option[Model] // TODO should this be an Option?
   /** If asModel is used, these are the models it refers to */
   def modelDependencies: Set[Model]
 
@@ -27,20 +27,21 @@ trait Swaggerify[T] {
   def asPathParameter(name: String, description: Option[String] = None): NonBodyParameter
   def asQueryParameter(name: String, description: Option[String] = None, default: Option[T] = None): NonBodyParameter
   // as*Parameter should not refer to any models. so there's no *Dependencies method for them
+
+  def usingRefModel(): Swaggerify[T]
 }
 
 // TODO consider distinguishing simple types to put a limitation on what can be used as non-body parameters
 case class Swg[T](asProperty: Property, asModel: Option[Model], modelDependencies: Set[Model]) extends Swaggerify[T] {
 
   // TODO consider enforcing ref model to refer to the asModel. This is now an implicit assumption.
-  override def propertyDependencies: Set[Model] =
-    asProperty match {
-      case _: RefProperty => modelDependencies ++ asModel
-      case _ => modelDependencies
-    }
+  override def propertyDependencies: Set[Model] = {
+    if (asProperty.isInstanceOf[RefProperty] && !asModel.exists(_.isInstanceOf[RefModel])) modelDependencies ++ asModel
+    else modelDependencies
+  }
 
   override def asBodyParameter(name: String = "body", description: Option[String] = None): BodyParameter =
-    BodyParameter(name = name,description = description, schema = asModel)
+    BodyParameter(name = name, description = description, schema = asModel)
 
   override def bodyParameterDependencies: Set[Model] = modelDependencies
 
@@ -75,6 +76,11 @@ case class Swg[T](asProperty: Property, asModel: Option[Model], modelDependencie
       // According to the specs the `type` of a non-body parameter "... MUST be one of "string", "number", "integer", "boolean", "array" or "file"."
       case _ => throw new UnsupportedOperationException("A non-body parameter can only be a of simple type (\"string\", \"number\", \"integer\", \"boolean\", \"array\" or \"file\") and should be represented by an AbstractProperty, a StringProperty or an ArrayProperty")
     }
+  }
+
+  def usingRefModel(): Swaggerify[T] = {
+    if (asModel.exists(_.isInstanceOf[RefModel])) this
+    else Swg(asProperty, asModel.map(m => RefModel(s"${m.id}Ref", s"${m.id2}Ref", ref = m.id2)), asModel.toSet ++ modelDependencies)
   }
 }
 
@@ -124,7 +130,7 @@ object Swaggerify {
   implicit val swaggerifyLocalDate: Swaggerify[java.time.LocalDate] = swaggerifyAsSimpleType("string", Some("date"))
   implicit val swaggerifyOffsetDateTime: Swaggerify[java.time.OffsetDateTime] = swaggerifyAsSimpleType("string", Some("date-time"))
 
-//  implicit def swaggerifyFileResponse[T]: Swaggerify[SwaggerFileResponse[T]] = swaggerifyAsSimpleType("file")
+  //  implicit def swaggerifyFileResponse[T]: Swaggerify[SwaggerFileResponse[T]] = swaggerifyAsSimpleType("file")
 
   def swaggerifyAsSimpleType[T](`type`: String, format: Option[String] = None): Swaggerify[T] =
     Swg(

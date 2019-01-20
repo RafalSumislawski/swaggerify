@@ -1,46 +1,40 @@
 package swaggerify
 
-import swaggerify.{models => m}
 import swaggerify.SwaggerBuilder._
+import swaggerify.{models => m}
 
+import scala.collection.immutable.ListMap
 import scala.language.implicitConversions
 
-case class SwaggerBuilder(routes: Seq[Route] = Vector.empty) {
-  def add(r: Route): SwaggerBuilder = SwaggerBuilder(routes :+ r)
+case class SwaggerBuilder(renderSimpleTypeResponsesAsRefModel: Boolean = false, // TODO is the definition of simple and complex clear?
+                          renderComplexTypeResponsesAsRefModel: Boolean = true,
+                          paths: Map[String, m.Path] = ListMap.empty,
+                          definitions: Map[String, m.Model] = ListMap.empty) {
 
-  def build(info: m.Info): m.Swagger = {
-    val paths = makePaths(routes)
-    val definitions = makeModels(routes)
+  def add(route: Route): SwaggerBuilder = {
+    val path = route.path
+    val pathString = makePathString(path)
+    val parameters = makePathParameters(path)
+    val operationName = route.method.toLowerCase
+    val (operation, models) = makeOperation(route)
 
-    m.Swagger(
-      info = Some(info), // it shouldn't be optional. It's not according to the specs and the validator.
-      paths = paths,
-      definitions = definitions
-    )
+    val basePathModel = paths.getOrElse(pathString, m.Path(parameters = parameters))
+    val pathModel = addOperation(basePathModel, operationName, operation)
+
+    val newDefinitions = models.toVector.map(m => m.id2 -> m).toMap
+
+    copy(paths = this.paths + (pathString -> pathModel), definitions = this.definitions ++ newDefinitions)
   }
 
-  private def makeModels(routes: Seq[Route]): Map[String, m.Model] = {
-    routes.foldLeft(SwaggerDefinitionsBuilder()) { (builder, route) =>
-      route.responses.foldLeft(builder)((builder, response) => builder.addModelType(response.swaggerify))
-    }.build()
-  }
-
-  private def makePaths(routes: Seq[Route]): Map[String, m.Path] = {
-    routes.groupBy(r => r.path).map { case (path, routes) =>
-      val pathString = makePathString(path)
-      val parameters = makePathParameters(path)
-      val operations = makeOperations(routes)
-
-      pathString -> m.Path(
-        parameters = parameters,
-        get = operations.get("get"),
-        put = operations.get("put"),
-        delete = operations.get("delete"),
-        post = operations.get("post"),
-        patch = operations.get("patch"),
-        options = operations.get("options"),
-        head = operations.get("head")
-        )
+  private def addOperation(basePathModel: m.Path, operationName: String, operation: m.Operation): m.Path = {
+    operationName match {
+      case "get" => basePathModel.copy(get = Some(operation))
+      case "put" => basePathModel.copy(put = Some(operation))
+      case "delete" => basePathModel.copy(delete = Some(operation))
+      case "post" => basePathModel.copy(post = Some(operation))
+      case "patch" => basePathModel.copy(patch = Some(operation))
+      case "options" => basePathModel.copy(options = Some(operation))
+      case "head" => basePathModel.copy(head = Some(operation))
     }
   }
 
@@ -54,33 +48,62 @@ case class SwaggerBuilder(routes: Seq[Route] = Vector.empty) {
   private def makePathParameters(path: Path): List[m.Parameter] =
     path.segments.collect { case p: PathVar[_] => p.swaggerify.asPathParameter(p.name, p.description) }.toList
 
-  private def makeOperations(routes: Seq[Route]): Map[String, m.Operation] = {
-    routes.map { route =>
-      val method = route.method.toLowerCase
-      val responses = makeResponses(route)
+  private def makeOperation(route: Route): (m.Operation, Set[m.Model]) = {
+    val (responses, models) = makeResponses(route)
+    val bodyModels = route.bodyParameter.map(_.swaggerify.bodyParameterDependencies).toSet.flatten
+    val operation = m.Operation(
+      operationId = Some(route.name),
+      description = route.description,
+      responses = responses,
+      parameters = route.bodyParameter.map(_.swaggerify.asBodyParameter()).toList ++
+        route.queryParameters.map(p => p.swaggerify.asQueryParameter(p.name)) ++
+        route.headerParameters.map(p => p.swaggerify.asHeaderParameter(p.name)) ++
+        route.cookieParameters.map(p => p.swaggerify.asCookieParameter(p.name)) ++
+        route.formParameters.map(p => p.swaggerify.asFormParameter(p.name))
+    )
 
-      val operation = m.Operation(
-        operationId = Some(route.name),
-        description = route.description,
-        responses = responses
-      )
+    (operation, models ++ bodyModels)
+  }
 
-      (method, operation)
+  private def makeResponses(route: Route): (Map[String, m.Response], Set[m.Model]) = {
+    val responses = route.responses.map { resp =>
+      val (responseModel, models) = makeResponse(resp)
+      (resp.code.toString, responseModel, models)
     }
-  }.toMap
+    (
+      responses.map { case (respCode, responseModel, _) => respCode -> responseModel }.toMap,
+      responses.flatMap { case (_, _, models) => models }.toSet
+    )
+  }
 
-  private def makeResponses(route: Route): Map[String, m.Response] = {
-    route.responses.map{ resp =>
-      resp.code.toString -> m.Response(
-        description = resp.description,
-        schema = resp.swaggerify.asModel
-      )
-    }.toMap
+  private def makeResponse(resp: Response[_]): (m.Response, Set[m.Model]) = {
+    val shouldUseRefModel = resp.swaggerify.asProperty match {
+      case _: m.AbstractProperty => renderSimpleTypeResponsesAsRefModel
+      case _: m.StringProperty => renderSimpleTypeResponsesAsRefModel
+      case _: m.ArrayProperty => renderSimpleTypeResponsesAsRefModel
+      case _: m.ObjectProperty => renderComplexTypeResponsesAsRefModel
+      case _: m.RefProperty => renderComplexTypeResponsesAsRefModel
+      case _: m.MapProperty => renderComplexTypeResponsesAsRefModel
+    }
+    val swg = if (shouldUseRefModel) resp.swaggerify.usingRefModel() else resp.swaggerify
+
+    (m.Response(description = resp.description, schema = swg.asModel), swg.modelDependencies)
+  }
+
+  def build(info: m.Info): m.Swagger = {
+    m.Swagger(
+      info = info,
+      paths = paths,
+      definitions = definitions
+    )
   }
 }
 
 object SwaggerBuilder {
-  case class Route(name: String, description: Option[String], method: String, path: Path, responses: Response[_]*)
+  case class Route(name: String, description: Option[String], method: String, path: Path, responses: Seq[Response[_]],
+                   bodyParameter: Option[BodyParameter[_]] = None, queryParameters: Seq[NonBodyParameter[_]] = Seq.empty,
+                   headerParameters: Seq[NonBodyParameter[_]] = Seq.empty, cookieParameters: Seq[NonBodyParameter[_]] = Seq.empty,
+                   formParameters: Seq[NonBodyParameter[_]] = Seq.empty)
 
   case class Response[R](code: Int, description: String)(implicit val swaggerify: Swaggerify[R])
 
@@ -97,6 +120,9 @@ object SwaggerBuilder {
   sealed trait PathSegment
   case class PathVar[T](name: String, description: Option[String] = None)(implicit val swaggerify: Swaggerify[T]) extends PathSegment
   case class PathString(s: String) extends PathSegment
+
+  case class BodyParameter[T](/*TODO*/)(implicit val swaggerify: Swaggerify[T])
+  case class NonBodyParameter[T](name: String)(implicit val swaggerify: Swaggerify[T])
 
   implicit def pathFromString(s: String): Path = Path(Vector(PathString(s)))
 }
