@@ -258,7 +258,7 @@ object Swaggerify {
         description = Some(ctx.typeName.short),
         `type` = Some("object"),
         discriminator = Some(discriminatorName),
-        properties = Map(discriminatorName -> StringProperty(required = true, enums = discriminatorValues))
+        properties = Map(discriminatorName -> StringProperty(enums = discriminatorValues))
       )
 
       val ownModelRef = RefModel(ownModel.id, ownModel.id2, ownModel.id2)

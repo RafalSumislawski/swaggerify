@@ -436,7 +436,7 @@ object `package` {
   (
     `type`      : String         = null
     , $ref        : Option[String] = None
-    , required    : Boolean        = false
+    , required    : Boolean        = true
     , title       : Option[String] = None
     , description : Option[String] = None
     , format      : Option[String] = None
@@ -471,7 +471,7 @@ object `package` {
 
   case class ObjectProperty
   (
-    required    : Boolean        = false
+    required    : Boolean        = true
     , title       : Option[String] = None
     , description : Option[String] = None
     , format      : Option[String] = None
@@ -498,7 +498,7 @@ object `package` {
   case class MapProperty
   (
     additionalProperties  : Property
-    , required              : Boolean        = false
+    , required              : Boolean        = true
     , title                 : Option[String] = None
     , description           : Option[String] = None
     , format                : Option[String] = None
@@ -551,7 +551,7 @@ object `package` {
   case class RefProperty
   (
     ref         : String
-    , required    : Boolean        = false
+    , required    : Boolean        = true
     , title       : Option[String] = None
     , description : Option[String] = None
     , format      : Option[String] = None
@@ -577,7 +577,7 @@ object `package` {
     title       : Option[String] = None
     , description : Option[String] = None
     , format      : Option[String] = None
-    , required: Boolean = false
+    , required: Boolean = true
     , enums: Set[String]
     , minLength: Option[Int] = None
     , maxLength: Option[Int] = None
