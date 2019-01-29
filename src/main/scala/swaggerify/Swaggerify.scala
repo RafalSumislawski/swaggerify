@@ -13,9 +13,13 @@ trait Swaggerify[T] {
   /** If asProperty is used, these are the models it refers to */
   def propertyDependencies: Set[Model]
 
+  def genPropertyDeps: Set[Swaggerify[_]] => Set[Model]
+
   def asModel: Option[Model] // TODO should this be an Option?
   /** If asModel is used, these are the models it refers to */
   def modelDependencies: Set[Model]
+
+  def genModelDeps: Set[Swaggerify[_]] => Set[Model]
 
   def asBodyParameter(name: String = "body", description: Option[String] = None): BodyParameter
   /** If asBodyParameter is used, these are the models it refers to */
@@ -32,12 +36,21 @@ trait Swaggerify[T] {
 }
 
 // TODO consider distinguishing simple types to put a limitation on what can be used as non-body parameters
-case class Swg[T](asProperty: Property, asModel: Option[Model], modelDependencies: Set[Model]) extends Swaggerify[T] {
+class Swg[T](asProp: => Property, model: => Option[Model], override val genModelDeps: Set[Swaggerify[_]] => Set[Model]) extends Swaggerify[T] {
+
+  override lazy val asProperty: Property = asProp
+
+  override lazy val asModel: Option[Model] = model
+
+  override lazy val modelDependencies: Set[Model] = genModelDeps(Set.empty)
 
   // TODO consider enforcing ref model to refer to the asModel. This is now an implicit assumption.
-  override def propertyDependencies: Set[Model] = {
-    if (asProperty.isInstanceOf[RefProperty] && !asModel.exists(_.isInstanceOf[RefModel])) modelDependencies ++ asModel
-    else modelDependencies
+  override def propertyDependencies: Set[Model] = genPropertyDeps(Set.empty)
+
+  override def genPropertyDeps: Set[Swaggerify[_]] => Set[Model] = alreadyKnown => {
+    val alreadyKnown2 = alreadyKnown + this
+    if (asProperty.isInstanceOf[RefProperty] && !asModel.exists(_.isInstanceOf[RefModel])) genModelDeps(alreadyKnown2) ++ asModel
+    else genModelDeps(alreadyKnown2)
   }
 
   override def asBodyParameter(name: String = "body", description: Option[String] = None): BodyParameter =
@@ -80,8 +93,12 @@ case class Swg[T](asProperty: Property, asModel: Option[Model], modelDependencie
 
   def usingRefModel(): Swaggerify[T] = {
     if (asModel.exists(_.isInstanceOf[RefModel])) this
-    else Swg(asProperty, asModel.map(m => RefModel(s"${m.id}Ref", s"${m.id2}Ref", ref = m.id2)), asModel.toSet ++ modelDependencies)
+    else Swg(asProperty, asModel.map(m => RefModel(s"${m.id}Ref", s"${m.id2}Ref", ref = m.id2)), _ => asModel.toSet ++ modelDependencies)
   }
+}
+
+object Swg{
+  @inline def apply[T](asProperty: Property, model: => Option[Model], genModelDeps: Set[Swaggerify[_]] => Set[Model]): Swg[T] = new Swg[T](asProperty, model, genModelDeps)
 }
 
 object Swaggerify {
@@ -98,7 +115,7 @@ object Swaggerify {
 
   def swaggerifyAsEmptyObject[T](fullTypeName: String, simpleTypeName: String): Swaggerify[T] = {
     val model = ModelImpl(id = fullTypeName, id2 = simpleTypeName, description = Some(simpleTypeName), `type` = Some("object"))
-    Swg(asProperty = RefProperty(simpleTypeName), asModel = Some(model), modelDependencies = Set.empty)
+    Swg(RefProperty(simpleTypeName), Some(model), _ => Set.empty)
   }
 
   implicit val swaggerifyString: Swaggerify[String] = swaggerifyAsSimpleType("string")
@@ -134,16 +151,16 @@ object Swaggerify {
 
   def swaggerifyAsSimpleType[T](`type`: String, format: Option[String] = None): Swaggerify[T] =
     Swg(
-      asProperty = AbstractProperty(`type` = `type`, format = format, required = true),
-      asModel = Some(ModelImpl(id = `type`, id2 = `type`, `type` = Some(`type`), description = Some(s"${`type`}:$format"), isSimple = true)),
-      modelDependencies = Set.empty
+      AbstractProperty(`type` = `type`, format = format, required = true),
+      Some(ModelImpl(id = `type`, id2 = `type`, `type` = Some(`type`), description = Some(s"${`type`}:$format"), isSimple = true)),
+      _ => Set.empty
     )
 
   implicit def swaggerifyOption[T: Swaggerify]: Swaggerify[Option[T]] =
-    Swg(Swaggerify[T].asProperty.withRequired(false), Swaggerify[T].asModel, Swaggerify[T].modelDependencies)
+    Swg(Swaggerify[T].asProperty.withRequired(false), Swaggerify[T].asModel, Swaggerify[T].genModelDeps)
 
   implicit def swaggerifyOptional[T: Swaggerify]: Swaggerify[java.util.Optional[T]] =
-    Swg(Swaggerify[T].asProperty.withRequired(false), Swaggerify[T].asModel, Swaggerify[T].modelDependencies)
+    Swg(Swaggerify[T].asProperty.withRequired(false), Swaggerify[T].asModel, Swaggerify[T].genModelDeps)
 
   implicit def swaggerifySet[I: Swaggerify]: Swaggerify[Set[I]] = swaggerifyAsArray[Set[I], I](uniqueItems = true)
 
@@ -163,9 +180,9 @@ object Swaggerify {
 
   def swaggerifyAsArray[T, I: Swaggerify](uniqueItems: Boolean = false): Swaggerify[T] =
     Swg(
-      asProperty = ArrayProperty(Swaggerify[I].asProperty, uniqueItems = uniqueItems),
-      asModel = Some(ArrayModel(id = null, id2 = null, `type` = Some("array"), items = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
-      modelDependencies = Swaggerify[I].propertyDependencies
+      ArrayProperty(Swaggerify[I].asProperty, uniqueItems = uniqueItems),
+      Some(ArrayModel(id = null, id2 = null, `type` = Some("array"), items = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
+      Swaggerify[I].genPropertyDeps
     )
 
   implicit def swaggerifyStringMap[I: Swaggerify]: Swaggerify[Map[String, I]] = swaggerifyAsMap[Map[String, I], I]
@@ -176,13 +193,13 @@ object Swaggerify {
 
   implicit def swaggerifyStringToAnyRefJMap: Swaggerify[java.util.Map[String, AnyRef]] = swaggerifyAsMap[java.util.Map[String, AnyRef], AnyRef](swaggerifyAnyRef)
 
-  val swaggerifyAnyRef: Swaggerify[AnyRef] = Swg(AbstractProperty("object"), None, modelDependencies = Set.empty)
+  val swaggerifyAnyRef: Swaggerify[AnyRef] = Swg(AbstractProperty("object"), None, _ => Set.empty)
 
   def swaggerifyAsMap[T, I: Swaggerify]: Swaggerify[T] =
     Swg(
-      asProperty = MapProperty(Swaggerify[I].asProperty, required = true),
-      asModel = Some(ModelImpl(id = null, id2 = null, `type` = Some("object"), additionalProperties = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
-      modelDependencies = Swaggerify[I].propertyDependencies
+      MapProperty(Swaggerify[I].asProperty, required = true),
+      Some(ModelImpl(id = null, id2 = null, `type` = Some("object"), additionalProperties = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
+      Swaggerify[I].genPropertyDeps
     )
 
   // consider excluding it from the default implicits as there are many reasonable ways to encode an either.
@@ -196,7 +213,7 @@ object Swaggerify {
       `type` = Some("object"),
       properties = Map("left" -> Swaggerify[L].asProperty.withRequired(false), "right" -> Swaggerify[R].asProperty.withRequired(false)) // FIXME strange things will happen with Either[Option[L], R] etc.
     )
-    Swg(RefProperty(model.id2), Some(model), Swaggerify[L].propertyDependencies ++ Swaggerify[R].propertyDependencies)
+    Swg(RefProperty(model.id2), Some(model), alreadyKnown => Swaggerify[L].genPropertyDeps(alreadyKnown) ++ Swaggerify[R].genPropertyDeps(alreadyKnown))
   }
 
   // TODO consider:
@@ -212,13 +229,18 @@ object Swaggerify {
     } else if (ctx.isObject) {
       swaggerifyAsEmptyObject[T](ctx.typeName.full, ctx.typeName.short)
     } else {
-      val model = ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short,
+      def model = ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short,
         description = Some(ctx.typeName.short),
         `type` = Some("object"),
         properties = ctx.parameters.map(param => param.label -> param.typeclass.asProperty).toMap
       )
 
-      val modelSet = ctx.parameters.map(_.typeclass.propertyDependencies).fold(Set())(_ ++ _)
+      def modelSet(alreadyKnown: Set[Swaggerify[_]]) = {
+        ctx.parameters.foldLeft(Set.empty[Model])((acc, param) =>
+          if(alreadyKnown.contains(param.typeclass)) acc
+          else acc ++ param.typeclass.genPropertyDeps(alreadyKnown)
+        )
+      }
 
       Swg(RefProperty(ctx.typeName.short), Some(model), modelSet)
     }
@@ -228,10 +250,10 @@ object Swaggerify {
     if (ctx.subtypes.forall(_.typeName.short.endsWith("$"))) { // a sealed trait of object is handled as an enum
       // Currently the model for it is a None. This will be a problem in case of two layer of traits.
       // It could be modeled as a simple string or as inheritance with empty objects as values.
-      Swg(StringProperty(enums = ctx.subtypes.map(_.typeName.short).toSet), None, Set.empty)
+      Swg(StringProperty(enums = ctx.subtypes.map(_.typeName.short).toSet), None, _ => Set.empty)
     } else { // a sealed trait with at least one case class is handled as an inheritance hierarchy
       val discriminatorName = "type" // TODO support for @DiscriminatorField
-    val discriminatorValues = ctx.subtypes.map(_.typeclass.asModel.get.id2).toSet
+      val discriminatorValues = ctx.subtypes.map(_.typeclass.asModel.get.id2).toSet
       val ownModel = ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short,
         description = Some(ctx.typeName.short),
         `type` = Some("object"),
@@ -241,7 +263,7 @@ object Swaggerify {
 
       val ownModelRef = RefModel(ownModel.id, ownModel.id2, ownModel.id2)
 
-      val subTypesModels = ctx.subtypes.map { sub =>
+      def subTypesModels = ctx.subtypes.map { sub =>
         val subModel = sub.typeclass.asModel.get
         ComposedModel(id = subModel.id, id2 = subModel.id2,
           description = subModel.description,
@@ -250,7 +272,7 @@ object Swaggerify {
         )
       }
 
-      val modelSet = ctx.subtypes.map(_.typeclass.modelDependencies).fold(Set())(_ ++ _) ++ subTypesModels
+      def modelSet(alreadyKnown: Set[Swaggerify[_]]) = ctx.subtypes.map(_.typeclass.genModelDeps(alreadyKnown)).fold(Set())(_ ++ _) ++ subTypesModels
 
       Swg(RefProperty(ownModel.id2), Some(ownModel), modelSet)
     }
