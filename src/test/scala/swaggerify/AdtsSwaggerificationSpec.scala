@@ -1,20 +1,10 @@
 package swaggerify
 
-import java.nio.file.{Files, Paths}
-import java.util
-import java.util.concurrent.ThreadLocalRandom
-
 import cats.data.Validated.Valid
-import cats.data.{NonEmptyList, Validated}
-import com.typesafe.scalalogging.StrictLogging
-import io.swagger.util.Yaml
-import org.specs2.mutable.Specification
-import swaggerify.AdtsSwaggerificationSpec.ResultType
-import swaggerify.SwaggerBuilder._
+import swaggerify.SwaggerifySpec.ResultType
 import swaggerify.models._
-import swaggerify.validation.SwaggerValidator
 
-class AdtsSwaggerificationSpec extends Specification with StrictLogging {
+class AdtsSwaggerificationSpec extends SwaggerifySpec {
 
   "SwaggerBuilder" should {
 
@@ -23,40 +13,33 @@ class AdtsSwaggerificationSpec extends Specification with StrictLogging {
     "Build a model definition for a product type" in {
       val swagger = buildSwaggerFileWith(ResultType[Prod])
 
-      save(swagger)
-      validate(swagger) must_== Valid(())
+      validateAndSave(swagger) must_== Valid(())
     }
-
 
     "Build a model definition for a recursive product type" in {
       case class RecursiveProd(a: String, b: RecursiveProd)
       val swagger = buildSwaggerFileWith(ResultType[RecursiveProd])
 
-      save(swagger)
-      validate(swagger) must_== Valid(())
+      validateAndSave(swagger) must_== Valid(())
       swagger.definitions.keySet must_== Set("RecursiveProd")
 
       swagger.definitions("RecursiveProd").properties("a").required must_== true
       swagger.definitions("RecursiveProd").properties("b").required must_== true
     }
 
-
     "Build a model definition for a product type containing another product type" in {
       case class Prod2(a: String, b: Prod)
       val swagger = buildSwaggerFileWith(ResultType[Prod2])
 
-      save(swagger)
-      validate(swagger) must_== Valid(())
+      validateAndSave(swagger) must_== Valid(())
       swagger.definitions.keySet must_== Set("Prod2", "Prod")
     }
-
 
     "Build a model definition for a product type containing another product type twice" in {
       case class Prod3(a: Prod, b: Prod)
       val swagger = buildSwaggerFileWith(ResultType[Prod3])
 
-      save(swagger)
-      validate(swagger) must_== Valid(())
+      validateAndSave(swagger) must_== Valid(())
       swagger.definitions.keySet must_== Set("Prod3", "Prod")
     }
 
@@ -64,8 +47,7 @@ class AdtsSwaggerificationSpec extends Specification with StrictLogging {
       case class GenericProd[T](a: Option[T], b: T)
       val swagger = buildSwaggerFileWith(ResultType[GenericProd[Prod]])
 
-      save(swagger)
-      validate(swagger) must_== Valid(())
+      validateAndSave(swagger) must_== Valid(())
       swagger.definitions.keySet must_== Set("GenericProd", "Prod")
       swagger.definitions("GenericProd").properties("a").asInstanceOf[RefProperty].ref must_== "Prod"
       swagger.definitions("GenericProd").properties("b").asInstanceOf[RefProperty].ref must_== "Prod"
@@ -75,8 +57,7 @@ class AdtsSwaggerificationSpec extends Specification with StrictLogging {
       case class GenericProd[T](a: Option[T], b: T)
       val swagger = buildSwaggerFileWith(ResultType[GenericProd[Prod]], ResultType[GenericProd[String]])
 
-      save(swagger)
-      validate(swagger) must_== Valid(())
+      validateAndSave(swagger) must_== Valid(())
       swagger.definitions.keySet must_== Set("GenericProd", "Prod")
     }
 
@@ -86,8 +67,7 @@ class AdtsSwaggerificationSpec extends Specification with StrictLogging {
                                 optProd: Option[Prod], prod: Prod)
       val swagger = buildSwaggerFileWith(ResultType[ProdWithOption])
 
-      save(swagger)
-      validate(swagger) must_== Valid(())
+      validateAndSave(swagger) must_== Valid(())
 
       val properties = swagger.definitions("ProdWithOption").properties
       properties("optString").required must_== false
@@ -104,8 +84,7 @@ class AdtsSwaggerificationSpec extends Specification with StrictLogging {
       case class Sum2(s: String) extends Sum
       val swagger = buildSwaggerFileWith(ResultType[Sum])
 
-      save(swagger)
-      validate(swagger) must_== Valid(())
+      validateAndSave(swagger) must_== Valid(())
 
       swagger.definitions.keySet must_== Set("Sum", "Sum1", "Sum2")
 
@@ -114,8 +93,6 @@ class AdtsSwaggerificationSpec extends Specification with StrictLogging {
       swagger.definitions("Sum1").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id2
       swagger.definitions("Sum2").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id2
     }
-
-
 
     // I would prefer a two level swagger model here,
     // but since https://github.com/propensive/magnolia/pull/98 have been merged, magnolia flattens sealed trait hierarchies.
@@ -127,8 +104,7 @@ class AdtsSwaggerificationSpec extends Specification with StrictLogging {
       case class Sum2b(d: Double) extends Sum2
       val swagger = buildSwaggerFileWith(ResultType[Sum])
 
-      save(swagger)
-      validate(swagger) must_== Valid(())
+      validateAndSave(swagger) must_== Valid(())
 
       swagger.definitions.keySet must_== Set("Sum", "Sum1", "Sum2a", "Sum2b")
 
@@ -149,8 +125,7 @@ class AdtsSwaggerificationSpec extends Specification with StrictLogging {
       case class Sum2b(d: Double) extends Sum2
       val swagger = buildSwaggerFileWith(ResultType[Sum], ResultType[Sum2])
 
-      save(swagger)
-      validate(swagger) must_== Valid(())
+      validateAndSave(swagger) must_== Valid(())
 
       swagger.definitions.keySet must_== Set("Sum", "Sum1", "Sum2", "Sum2a", "Sum2b")
 
@@ -163,28 +138,4 @@ class AdtsSwaggerificationSpec extends Specification with StrictLogging {
       swagger.definitions("Sum2b").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sum2Model.id2
     }
   }
-
-  private def validate(swagger: Swagger): Validated[NonEmptyList[String], Unit] =
-    SwaggerValidator.validate(toYamlString(swagger))
-
-  private def toYamlString(swagger: Swagger): String =
-    Yaml.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(swagger.toJModel)
-
-  private def save(swagger: Swagger): Unit = {
-    val filePath = Paths.get(f"target/${System.currentTimeMillis()}-${ThreadLocalRandom.current().nextInt(1000)}%03d.yaml")
-    logger.debug(s"Writing swagger YAML file to $filePath")
-    Files.write(filePath, util.Arrays.asList(toYamlString(swagger)))
-  }
-
-  private def buildSwaggerFileWith(resultTypes: ResultType[_]*): Swagger = {
-    resultTypes.foldLeft(SwaggerBuilder())((sb, resultType) =>
-      sb.add(Route("getPath1", Some("Description"),
-        "get", "path",
-        responses = Seq(SwaggerBuilder.ok(resultType.swaggerify))))
-    ).build(swaggerify.models.Info("title", "version"))
-  }
-}
-
-object AdtsSwaggerificationSpec{
-  private case class ResultType[T]()(implicit val swaggerify: Swaggerify[T])
 }
