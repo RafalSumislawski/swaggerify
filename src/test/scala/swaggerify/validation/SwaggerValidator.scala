@@ -2,14 +2,13 @@ package swaggerify.validation
 
 import cats._
 import cats.data._
-import io.swagger.validator.services.ValidatorService
 
 import scala.collection.JavaConverters._
 
 object SwaggerValidator {
 
   def validate(swagger: String): Validated[NonEmptyList[String], Unit] = {
-    val validationResponse = validationService.get.debugByContent(null, null, swagger)
+    val validationResponse = validationService.debugByContent(swagger)
 
     val messages = Option(validationResponse.getMessages).toList.flatMap(_.asScala)
     val fromMessages: Validated[NonEmptyList[String], Unit] = Validated.fromOption(NonEmptyList.fromList(messages), ()).swap
@@ -21,5 +20,5 @@ object SwaggerValidator {
     Applicative[Validated[NonEmptyList[String], ?]].map2(fromMessages, fromValidationMessages)((_: Unit, _: Unit) => ())
   }
 
-  private val validationService: ThreadLocal[ValidatorService] = ThreadLocal.withInitial(() => new ValidatorService())
+  private lazy val validationService: ValidatorService = new ValidatorService()
 }
