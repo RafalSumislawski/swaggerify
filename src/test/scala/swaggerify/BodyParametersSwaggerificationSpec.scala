@@ -47,9 +47,9 @@ class BodyParametersSwaggerificationSpec extends SwaggerifySpec {
       val bodyParameter = swagger.paths.values.head.get.get.parameters.head.asInstanceOf[models.BodyParameter]
       bodyParameter.in must_== "body"
       bodyParameter.schema.asInstanceOf[models.ArrayModel].uniqueItems must_== false
-      bodyParameter.schema.asInstanceOf[models.ArrayModel].items.get.`type` must_== "integer"
-      bodyParameter.schema.asInstanceOf[models.ArrayModel].items.get.format must beSome("int32")
-      bodyParameter.schema.asInstanceOf[models.ArrayModel].items.get.description must beSome("short")
+      bodyParameter.schema.asInstanceOf[models.ArrayModel].items.`type` must_== "integer"
+      bodyParameter.schema.asInstanceOf[models.ArrayModel].items.format must beSome("int32")
+      bodyParameter.schema.asInstanceOf[models.ArrayModel].items.description must beSome("short")
       swagger.definitions.size must_== 0
     }
 

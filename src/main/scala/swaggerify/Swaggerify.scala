@@ -50,9 +50,9 @@ class Swg[T](asProp: => Property,
 
   override lazy val modelDependencies: Set[Model] = genModelDeps(Set.empty)
 
-  // TODO consider enforcing ref model to refer to the asModel. This is now an implicit assumption.
   override def propertyDependencies: Set[Model] = genPropertyDeps(Set.empty)
 
+  // TODO consider enforcing ref model to refer to the asModel. This is now an implicit assumption.
   override def genPropertyDeps: Set[Swaggerify[_]] => Set[Model] = alreadyKnown => {
     val alreadyKnown2 = alreadyKnown + this
     if (asProperty.isInstanceOf[RefProperty] && !asModel.isInstanceOf[RefModel]) genModelDeps(alreadyKnown2) + asModel
@@ -167,56 +167,69 @@ object Swaggerify {
       _ => Set.empty
     )
 
+  implicit val swaggerifyAnyRef: Swaggerify[AnyRef] = Swg(
+    AbstractProperty("object"),
+    ModelImpl(id = "java.lang.Object", id2 = "Object", `type` = Some("object")),
+    _ => Set.empty
+  )
+
   implicit def swaggerifyOption[T: Swaggerify]: Swaggerify[Option[T]] =
     Swg(Swaggerify[T].asProperty.withRequired(false), Swaggerify[T].asModel, Swaggerify[T].genModelDeps)
 
   implicit def swaggerifyOptional[T: Swaggerify]: Swaggerify[java.util.Optional[T]] =
     Swg(Swaggerify[T].asProperty.withRequired(false), Swaggerify[T].asModel, Swaggerify[T].genModelDeps)
 
-  implicit def swaggerifySet[I: Swaggerify]: Swaggerify[Set[I]] = swaggerifyAsArray[Set[I], I](uniqueItems = true)
+  implicit def swaggerifySet[I: Swaggerify](implicit tt: TypeTag[Set[I]]): Swaggerify[Set[I]] =
+    swaggerifyAsArray[Set[I], I](uniqueItems = true)
 
-  implicit def swaggerifyJSet[I: Swaggerify]: Swaggerify[java.util.Set[I]] = swaggerifyAsArray[java.util.Set[I], I](uniqueItems = true)
+  implicit def swaggerifyJSet[I: Swaggerify](implicit tt: TypeTag[java.util.Set[I]]): Swaggerify[java.util.Set[I]] =
+    swaggerifyAsArray[java.util.Set[I], I](uniqueItems = true)
 
-  implicit def swaggerifyArray[I: Swaggerify]: Swaggerify[Array[I]] = swaggerifyAsArray[Array[I], I]()
+  implicit def swaggerifyArray[I: Swaggerify](implicit tt: TypeTag[Array[I]]): Swaggerify[Array[I]] =
+    swaggerifyAsArray[Array[I], I]()
 
-  implicit def swaggerifySeq[I: Swaggerify]: Swaggerify[Seq[I]] = swaggerifyAsArray[Seq[I], I]()
+  implicit def swaggerifySeq[I: Swaggerify](implicit tt: TypeTag[Seq[I]]): Swaggerify[Seq[I]] =
+    swaggerifyAsArray[Seq[I], I]()
 
-  implicit def swaggerifyIndexedSeq[I: Swaggerify]: Swaggerify[IndexedSeq[I]] = swaggerifyAsArray[IndexedSeq[I], I]()
+  implicit def swaggerifyIndexedSeq[I: Swaggerify](implicit tt: TypeTag[IndexedSeq[I]]): Swaggerify[IndexedSeq[I]] =
+    swaggerifyAsArray[IndexedSeq[I], I]()
 
-  implicit def swaggerifyList[I: Swaggerify]: Swaggerify[List[I]] = swaggerifyAsArray[List[I], I]()
+  implicit def swaggerifyList[I: Swaggerify](implicit tt: TypeTag[List[I]]): Swaggerify[List[I]] =
+    swaggerifyAsArray[List[I], I]()
 
-  implicit def swaggerifyVector[I: Swaggerify]: Swaggerify[Vector[I]] = swaggerifyAsArray[Vector[I], I]()
+  implicit def swaggerifyVector[I: Swaggerify](implicit tt: TypeTag[Vector[I]]): Swaggerify[Vector[I]] =
+    swaggerifyAsArray[Vector[I], I]()
 
-  implicit def swaggerifyJList[I: Swaggerify]: Swaggerify[java.util.List[I]] = swaggerifyAsArray[java.util.List[I], I]()
+  implicit def swaggerifyJList[I: Swaggerify](implicit tt: TypeTag[java.util.List[I]]): Swaggerify[java.util.List[I]] =
+    swaggerifyAsArray[java.util.List[I], I]()
 
-  implicit def swaggerifyJArrayList[I: Swaggerify]: Swaggerify[java.util.ArrayList[I]] = swaggerifyAsArray[java.util.ArrayList[I], I]()
+  implicit def swaggerifyJArrayList[I: Swaggerify](implicit tt: TypeTag[java.util.ArrayList[I]]): Swaggerify[java.util.ArrayList[I]] =
+    swaggerifyAsArray[java.util.ArrayList[I], I]()
 
-  implicit def swaggerifyJLinkedList[I: Swaggerify]: Swaggerify[java.util.LinkedList[I]] = swaggerifyAsArray[java.util.LinkedList[I], I]()
+  implicit def swaggerifyJLinkedList[I: Swaggerify](implicit tt: TypeTag[java.util.LinkedList[I]]): Swaggerify[java.util.LinkedList[I]] =
+    swaggerifyAsArray[java.util.LinkedList[I], I]()
 
-  def swaggerifyAsArray[T, I: Swaggerify](uniqueItems: Boolean = false): Swaggerify[T] =
-    Swg(
+  def swaggerifyAsArray[T, I: Swaggerify](uniqueItems: Boolean = false)(implicit tt: TypeTag[T]): Swaggerify[T] = Swg(
       ArrayProperty(Swaggerify[I].asProperty, uniqueItems = uniqueItems),
-      ArrayModel(id = null, id2 = null, `type` = Some("array"), items = Some(Swaggerify[I].asProperty), uniqueItems = uniqueItems), // FIXME nulls! // TODO should items be an Option for ArrayModel?
+      ArrayModel(id = tt.tpe.fullName, id2 = tt.tpe.simpleName, `type` = Some("array"), items = Swaggerify[I].asProperty, uniqueItems = uniqueItems),
       Swaggerify[I].genPropertyDeps
     )
 
-  implicit def swaggerifyStringMap[I: Swaggerify]: Swaggerify[Map[String, I]] = swaggerifyAsMap[Map[String, I], I]
+  implicit def swaggerifyStringMap[I: Swaggerify](implicit tt: TypeTag[Map[String, I]]): Swaggerify[Map[String, I]] =
+    swaggerifyAsMap[Map[String, I], I]
 
-  implicit def swaggerifyStringJMap[I: Swaggerify]: Swaggerify[java.util.Map[String, I]] = swaggerifyAsMap[java.util.Map[String, I], I]
+  implicit def swaggerifyStringJMap[I: Swaggerify](implicit tt: TypeTag[java.util.Map[String, I]]): Swaggerify[java.util.Map[String, I]] =
+    swaggerifyAsMap[java.util.Map[String, I], I]
 
-  implicit def swaggerifyStringToAnyRefMap: Swaggerify[Map[String, AnyRef]] = swaggerifyAsMap[Map[String, AnyRef], AnyRef](swaggerifyAnyRef)
+  implicit val swaggerifyStringToAnyRefMap: Swaggerify[Map[String, AnyRef]] =
+    swaggerifyAsMap[Map[String, AnyRef], AnyRef]
 
-  implicit def swaggerifyStringToAnyRefJMap: Swaggerify[java.util.Map[String, AnyRef]] = swaggerifyAsMap[java.util.Map[String, AnyRef], AnyRef](swaggerifyAnyRef)
+  implicit val swaggerifyStringToAnyRefJMap: Swaggerify[java.util.Map[String, AnyRef]] =
+    swaggerifyAsMap[java.util.Map[String, AnyRef], AnyRef]
 
-  val swaggerifyAnyRef: Swaggerify[AnyRef] = Swg(
-    AbstractProperty("object"),
-    ModelImpl(id = null, id2 = null, `type` = Some("object")), // FIXME nulls!
-    _ => Set.empty
-  )
-
-  def swaggerifyAsMap[T, I: Swaggerify]: Swaggerify[T] = Swg(
+  def swaggerifyAsMap[T, I: Swaggerify](implicit tt: TypeTag[T]): Swaggerify[T] = Swg(
     MapProperty(Swaggerify[I].asProperty),
-    ModelImpl(id = null, id2 = null, `type` = Some("object"), additionalProperties = Some(Swaggerify[I].asProperty)), // FIXME nulls!
+    ModelImpl(id = tt.tpe.fullName, id2 = tt.tpe.simpleName, `type` = Some("object"), additionalProperties = Some(Swaggerify[I].asProperty)),
     Swaggerify[I].genPropertyDeps
   )
 
@@ -232,8 +245,8 @@ object Swaggerify {
       // FIXME strange things will happen with Either[Option[L], R] etc.
       properties = Map("left" -> Swaggerify[L].asProperty.withRequired(false), "right" -> Swaggerify[R].asProperty.withRequired(false))
     )
-    Swg(RefProperty(model.id2), model,
-      alreadyKnown => Swaggerify[L].genPropertyDeps(alreadyKnown) ++ Swaggerify[R].genPropertyDeps(alreadyKnown))
+    def modelSet(alreadyKnown: Set[Swaggerify[_]]) = Swaggerify[L].genPropertyDeps(alreadyKnown) ++ Swaggerify[R].genPropertyDeps(alreadyKnown)
+    Swg(RefProperty(model.id2), model, modelSet)
   }
 
   // TODO consider:

@@ -351,12 +351,12 @@ object `package` {
 
   case class ArrayModel
   (
-    id           : String
+      id           : String
     , id2          : String
+    , items        : Property
     , description  : Option[String]        = None
     ,`type`        : Option[String]        = None
     , properties   : Map[String, Property] = Map.empty
-    , items        : Option[Property]      = None
     , example      : Option[String]        = None
     , externalDocs : Option[ExternalDocs]  = None
     , uniqueItems  : Boolean               = false
@@ -367,7 +367,7 @@ object `package` {
       am.setType(fromOption(`type`))
       am.setDescription(fromOption(description))
       am.setProperties(fromMap(properties.mapValues(_.toJModel)))
-      am.setItems(fromOption(items.map(_.toJModel)))
+      am.setItems(items.toJModel)
       am.setExample(fromOption(example))
       am.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
       am.setUniqueItems(uniqueItems)
@@ -526,7 +526,7 @@ object `package` {
 
   case class ArrayProperty
   (
-    items       : Property
+      items       : Property
     , uniqueItems : Boolean        = false
     , required    : Boolean        = true
     , title       : Option[String] = None
