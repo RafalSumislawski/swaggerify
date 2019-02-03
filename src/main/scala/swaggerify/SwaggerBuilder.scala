@@ -6,8 +6,8 @@ import swaggerify.{models => m}
 import scala.collection.immutable.ListMap
 import scala.language.implicitConversions
 
-case class SwaggerBuilder(renderSimpleTypeResponsesAsRefModel: Boolean = false, // TODO is the definition of simple and complex clear?
-                          renderComplexTypeResponsesAsRefModel: Boolean = true,
+case class SwaggerBuilder(renderSimpleTypesAsRefModels: Boolean = false, // TODO is the definition of simple and complex clear?
+                          renderComplexTypesAsRefModels: Boolean = true,
                           paths: Map[String, m.Path] = ListMap.empty,
                           definitions: Map[String, m.Model] = ListMap.empty) {
 
@@ -50,12 +50,13 @@ case class SwaggerBuilder(renderSimpleTypeResponsesAsRefModel: Boolean = false, 
 
   private def makeOperation(route: Route): (m.Operation, Set[m.Model]) = {
     val (responses, models) = makeResponses(route)
-    val bodyModels = route.bodyParameter.map(_.swaggerify.bodyParameterDependencies).toSet.flatten
+    val bodySwaggerify = route.bodyParameter.map(p => useRefModelAccordingToConfiguration(p.swaggerify))
+    val bodyModels = bodySwaggerify.map(_.bodyParameterDependencies).toSet.flatten
     val operation = m.Operation(
       operationId = Some(route.name),
       description = route.description,
       responses = responses,
-      parameters = route.bodyParameter.map(_.swaggerify.asBodyParameter()).toList ++
+      parameters = bodySwaggerify.map(_.asBodyParameter()).toList ++
         route.queryParameters.map(p => p.swaggerify.asQueryParameter(p.name)) ++
         route.headerParameters.map(p => p.swaggerify.asHeaderParameter(p.name)) ++
         route.cookieParameters.map(p => p.swaggerify.asCookieParameter(p.name)) ++
@@ -77,17 +78,20 @@ case class SwaggerBuilder(renderSimpleTypeResponsesAsRefModel: Boolean = false, 
   }
 
   private def makeResponse(resp: Response[_]): (m.Response, Set[m.Model]) = {
-    val shouldUseRefModel = resp.swaggerify.asProperty match {
-      case _: m.AbstractProperty => renderSimpleTypeResponsesAsRefModel
-      case _: m.StringProperty => renderSimpleTypeResponsesAsRefModel
-      case _: m.ArrayProperty => renderSimpleTypeResponsesAsRefModel
-      case _: m.ObjectProperty => renderComplexTypeResponsesAsRefModel
-      case _: m.RefProperty => renderComplexTypeResponsesAsRefModel
-      case _: m.MapProperty => renderComplexTypeResponsesAsRefModel
-    }
-    val swg = if (shouldUseRefModel) resp.swaggerify.usingRefModel() else resp.swaggerify
-
+    val swg = useRefModelAccordingToConfiguration(resp.swaggerify)
     (m.Response(description = resp.description, schema = swg.asModel), swg.modelDependencies)
+  }
+
+  private def useRefModelAccordingToConfiguration(swaggerify: Swaggerify[_]): Swaggerify[_] = {
+    val shouldUseRefModel = swaggerify.asProperty match {
+      case _: m.AbstractProperty => renderSimpleTypesAsRefModels
+      case _: m.StringProperty => renderSimpleTypesAsRefModels
+      case _: m.ArrayProperty => renderSimpleTypesAsRefModels
+      case _: m.MapProperty => renderSimpleTypesAsRefModels
+      case _: m.ObjectProperty => renderComplexTypesAsRefModels
+      case _: m.RefProperty => renderComplexTypesAsRefModels
+    }
+    if (shouldUseRefModel) swaggerify.usingRefModel() else swaggerify
   }
 
   def build(info: m.Info): m.Swagger = {
@@ -121,8 +125,8 @@ object SwaggerBuilder {
   case class PathVar[T](name: String, description: Option[String] = None)(implicit val swaggerify: Swaggerify[T]) extends PathSegment
   case class PathString(s: String) extends PathSegment
 
-  case class BodyParameter[T](/*TODO*/)(implicit val swaggerify: Swaggerify[T])
-  case class NonBodyParameter[T](name: String)(implicit val swaggerify: Swaggerify[T])
+  case class BodyParameter[T](name: String, description: Option[String] = None)(implicit val swaggerify: Swaggerify[T])
+  case class NonBodyParameter[T](name: String, description: Option[String] = None)(implicit val swaggerify: Swaggerify[T])
 
   implicit def pathFromString(s: String): Path = Path(Vector(PathString(s)))
 }

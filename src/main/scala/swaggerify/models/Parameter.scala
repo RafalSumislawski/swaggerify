@@ -21,7 +21,7 @@ case class BodyParameter
     name             : String
   , schema           : Option[Model]    = None
   , description      : Option[String]   = None
-  , required         : Boolean          = false
+  , required         : Boolean          = true
   , access           : Option[String]   = None
   , vendorExtensions : Map[String, Any] = Map.empty
 ) extends Parameter {
@@ -48,7 +48,7 @@ case class NonBodyParameter(in: String,
                             items: Option[Property] = None,
                             default: Option[Any] = None,
                             description: Option[String] = None,
-                            required: Boolean = false,
+                            required: Boolean = true,
                             access: Option[String] = None,
                             vendorExtensions: Map[String, Any] = Map.empty,
                             enums: List[String] = List.empty) extends Parameter {

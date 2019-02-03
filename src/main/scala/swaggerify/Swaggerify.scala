@@ -107,7 +107,7 @@ object Swaggerify {
 
   implicit val swaggerifyUnit: Swaggerify[Unit] = swaggerifyAsEmptyObject
   implicit val swaggerifyVoid: Swaggerify[java.lang.Void] = swaggerifyAsEmptyObject
-  implicit val swaggerifyNull: Swaggerify[Null] = swaggerifyAsEmptyObject
+  implicit val swaggerifyNull: Swaggerify[Null] = swaggerifyAsEmptyObject("scala.Null", "Nul") // "Null" can't be used in YAML
   implicit val swaggerifyNothing: Swaggerify[Nothing] = swaggerifyAsEmptyObject
 
   def swaggerifyAsEmptyObject[T](implicit tt: TypeTag[T]): Swaggerify[T] =
@@ -119,12 +119,13 @@ object Swaggerify {
   }
 
   implicit val swaggerifyString: Swaggerify[String] = swaggerifyAsSimpleType("string")
-  implicit val swaggerifyChar: Swaggerify[Char] = swaggerifyAsSimpleType("string")
-  implicit val swaggerifyJChar: Swaggerify[java.lang.Character] = swaggerifyAsSimpleType("string")
-  implicit val swaggerifyByte: Swaggerify[Byte] = swaggerifyAsSimpleType("integer", Some("int32"))
-  implicit val swaggerifyBJyte: Swaggerify[java.lang.Byte] = swaggerifyAsSimpleType("integer", Some("int32"))
-  implicit val swaggerifyShort: Swaggerify[Short] = swaggerifyAsSimpleType("integer", Some("int32"))
-  implicit val swaggerifyJShort: Swaggerify[java.lang.Short] = swaggerifyAsSimpleType("integer", Some("int32"))
+  implicit val swaggerifyCharSequence: Swaggerify[CharSequence] = swaggerifyAsSimpleType("string")
+  implicit val swaggerifyChar: Swaggerify[Char] = swaggerifyAsSimpleType("string", None, Some("char"))
+  implicit val swaggerifyJChar: Swaggerify[java.lang.Character] = swaggerifyAsSimpleType("string", None, Some("char"))
+  implicit val swaggerifyByte: Swaggerify[Byte] = swaggerifyAsSimpleType("integer", Some("int32"), Some("byte"))
+  implicit val swaggerifyBJyte: Swaggerify[java.lang.Byte] = swaggerifyAsSimpleType("integer", Some("int32"), Some("byte"))
+  implicit val swaggerifyShort: Swaggerify[Short] = swaggerifyAsSimpleType("integer", Some("int32"), Some("short"))
+  implicit val swaggerifyJShort: Swaggerify[java.lang.Short] = swaggerifyAsSimpleType("integer", Some("int32"), Some("short"))
   implicit val swaggerifyInt: Swaggerify[Int] = swaggerifyAsSimpleType("integer", Some("int32"))
   implicit val swaggerifyJInt: Swaggerify[java.lang.Integer] = swaggerifyAsSimpleType("integer", Some("int32"))
   implicit val swaggerifyLong: Swaggerify[Long] = swaggerifyAsSimpleType("integer", Some("int64"))
@@ -144,15 +145,15 @@ object Swaggerify {
   // https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md
   // https://xml2rfc.tools.ietf.org/public/rfc/html/rfc3339.html#anchor14
   // Other java.time types can be added by users as needed.
-  implicit val swaggerifyLocalDate: Swaggerify[java.time.LocalDate] = swaggerifyAsSimpleType("string", Some("date"))
-  implicit val swaggerifyOffsetDateTime: Swaggerify[java.time.OffsetDateTime] = swaggerifyAsSimpleType("string", Some("date-time"))
+  implicit val swaggerifyLocalDate: Swaggerify[java.time.LocalDate] = swaggerifyAsSimpleType("string", Some("date"), Some("java.time.LocalDate"))
+  implicit val swaggerifyOffsetDateTime: Swaggerify[java.time.OffsetDateTime] = swaggerifyAsSimpleType("string", Some("date-time"), Some("java.time.OffsetDateTime"))
 
   //  implicit def swaggerifyFileResponse[T]: Swaggerify[SwaggerFileResponse[T]] = swaggerifyAsSimpleType("file")
 
-  def swaggerifyAsSimpleType[T](`type`: String, format: Option[String] = None): Swaggerify[T] =
+  def swaggerifyAsSimpleType[T](`type`: String, format: Option[String] = None, description: Option[String] = None): Swaggerify[T] =
     Swg(
-      AbstractProperty(`type` = `type`, format = format, required = true),
-      Some(ModelImpl(id = `type`, id2 = `type`, `type` = Some(`type`), description = Some(s"${`type`}:$format"), isSimple = true)),
+      AbstractProperty(`type` = `type`, format = format),
+      Some(ModelImpl(id = `type`, id2 = `type`, `type` = Some(`type`), format = format, description = description, isSimple = true)),
       _ => Set.empty
     )
 
@@ -178,6 +179,10 @@ object Swaggerify {
 
   implicit def swaggerifyJList[I: Swaggerify]: Swaggerify[java.util.List[I]] = swaggerifyAsArray[java.util.List[I], I]()
 
+  implicit def swaggerifyJArrayList[I: Swaggerify]: Swaggerify[java.util.ArrayList[I]] = swaggerifyAsArray[java.util.ArrayList[I], I]()
+
+  implicit def swaggerifyJLinkedList[I: Swaggerify]: Swaggerify[java.util.LinkedList[I]] = swaggerifyAsArray[java.util.LinkedList[I], I]()
+
   def swaggerifyAsArray[T, I: Swaggerify](uniqueItems: Boolean = false): Swaggerify[T] =
     Swg(
       ArrayProperty(Swaggerify[I].asProperty, uniqueItems = uniqueItems),
@@ -197,7 +202,7 @@ object Swaggerify {
 
   def swaggerifyAsMap[T, I: Swaggerify]: Swaggerify[T] =
     Swg(
-      MapProperty(Swaggerify[I].asProperty, required = true),
+      MapProperty(Swaggerify[I].asProperty),
       Some(ModelImpl(id = null, id2 = null, `type` = Some("object"), additionalProperties = Some(Swaggerify[I].asProperty))), // TODO I don't care about these nulls as this model shouldn't end up in modelsSets, but a cleaner solution would be nice.
       Swaggerify[I].genPropertyDeps
     )

@@ -11,14 +11,14 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
     case class Prod(a: String, b: String)
 
     "Build a model definition for a product type" in {
-      val swagger = buildSwaggerFileWith(ResultType[Prod])
+      val swagger = buildSwaggerWith(ResultType[Prod])
 
       validateAndSave(swagger) must_== Valid(())
     }
 
     "Build a model definition for a recursive product type" in {
       case class RecursiveProd(a: String, b: RecursiveProd)
-      val swagger = buildSwaggerFileWith(ResultType[RecursiveProd])
+      val swagger = buildSwaggerWith(ResultType[RecursiveProd])
 
       validateAndSave(swagger) must_== Valid(())
       swagger.definitions.keySet must_== Set("RecursiveProd")
@@ -29,7 +29,7 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
 
     "Build a model definition for a product type containing another product type" in {
       case class Prod2(a: String, b: Prod)
-      val swagger = buildSwaggerFileWith(ResultType[Prod2])
+      val swagger = buildSwaggerWith(ResultType[Prod2])
 
       validateAndSave(swagger) must_== Valid(())
       swagger.definitions.keySet must_== Set("Prod2", "Prod")
@@ -37,7 +37,7 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
 
     "Build a model definition for a product type containing another product type twice" in {
       case class Prod3(a: Prod, b: Prod)
-      val swagger = buildSwaggerFileWith(ResultType[Prod3])
+      val swagger = buildSwaggerWith(ResultType[Prod3])
 
       validateAndSave(swagger) must_== Valid(())
       swagger.definitions.keySet must_== Set("Prod3", "Prod")
@@ -45,7 +45,7 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
 
     "Build a model definition for a generic product" in {
       case class GenericProd[T](a: Option[T], b: T)
-      val swagger = buildSwaggerFileWith(ResultType[GenericProd[Prod]])
+      val swagger = buildSwaggerWith(ResultType[GenericProd[Prod]])
 
       validateAndSave(swagger) must_== Valid(())
       swagger.definitions.keySet must_== Set("GenericProd", "Prod")
@@ -55,17 +55,17 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
 
     "Build two separate model definitions for a generic product parametrised with two different type parameters" in {
       case class GenericProd[T](a: Option[T], b: T)
-      val swagger = buildSwaggerFileWith(ResultType[GenericProd[Prod]], ResultType[GenericProd[String]])
+      val swagger = buildSwaggerWith(ResultType[GenericProd[Prod]], ResultType[GenericProd[String]])
 
       validateAndSave(swagger) must_== Valid(())
-      swagger.definitions.keySet must_== Set("GenericProd", "Prod")
+      swagger.definitions.keySet must_== Set("GenericProd[Prod]", "GenericProd[String]", "Prod")
     }
 
     "Mark non-Option filed as required and Option fields as not required" in {
       case class ProdWithOption(optString: Option[String], string: String,
                                 optInt: Option[Int], intt: Int,
                                 optProd: Option[Prod], prod: Prod)
-      val swagger = buildSwaggerFileWith(ResultType[ProdWithOption])
+      val swagger = buildSwaggerWith(ResultType[ProdWithOption])
 
       validateAndSave(swagger) must_== Valid(())
 
@@ -82,7 +82,7 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
       sealed trait Sum
       case class Sum1(i: Int) extends Sum
       case class Sum2(s: String) extends Sum
-      val swagger = buildSwaggerFileWith(ResultType[Sum])
+      val swagger = buildSwaggerWith(ResultType[Sum])
 
       validateAndSave(swagger) must_== Valid(())
 
@@ -102,7 +102,7 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
       sealed trait Sum2 extends Sum
       case class Sum2a(s: String) extends Sum2
       case class Sum2b(d: Double) extends Sum2
-      val swagger = buildSwaggerFileWith(ResultType[Sum])
+      val swagger = buildSwaggerWith(ResultType[Sum])
 
       validateAndSave(swagger) must_== Valid(())
 
@@ -123,7 +123,7 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
       sealed trait Sum2 extends Sum
       case class Sum2a(s: String) extends Sum2
       case class Sum2b(d: Double) extends Sum2
-      val swagger = buildSwaggerFileWith(ResultType[Sum], ResultType[Sum2])
+      val swagger = buildSwaggerWith(ResultType[Sum], ResultType[Sum2])
 
       validateAndSave(swagger) must_== Valid(())
 

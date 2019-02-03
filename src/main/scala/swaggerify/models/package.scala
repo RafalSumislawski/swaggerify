@@ -323,6 +323,7 @@ object `package` {
     , id2                  : String
     , description          : Option[String]        = None
     , `type`               : Option[String]        = None
+    , format               : Option[String]        = None
     , name                 : Option[String]        = None
     , required             : List[String]          = Nil
     , properties           : Map[String, Property] = Map.empty

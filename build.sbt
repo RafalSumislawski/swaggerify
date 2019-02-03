@@ -42,10 +42,12 @@ val specsCore = "org.specs2" %% "specs2-core" % specs2Version
 val specsScalaCheck = "org.specs2" %% "specs2-scalacheck" % specs2Version
 val allSpecs = Seq(specsCore, specsScalaCheck)
 
+val commonsIo = "commons-io" % "commons-io" % "2.6"
+
 resolvers += Resolver.jcenterRepo
 
 libraryDependencies ++= Seq(scalaReflect, magnolia, swaggerModels, swaggerCore, /*rhoSwagger, http4sCore,*/ scalaLogging, slf4j) ++ allCirce ++
-  (Seq(log4jApi, log4jSlf4j, lmaxDisruptor, scalaTest, swaggerValidator) ++ allSpecs).map(_ % "test")
+  (Seq(log4jApi, log4jSlf4j, lmaxDisruptor, scalaTest, swaggerValidator, commonsIo) ++ allSpecs).map(_ % Test)
 
 scalacOptions ++= Seq(
   "-target:jvm-1.8",
