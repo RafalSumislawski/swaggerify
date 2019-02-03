@@ -155,7 +155,6 @@ class PropertiesSwaggerificationSpec extends SwaggerifySpec {
 
       val swagger = buildSwaggerWithResultType(ResultType[TypeWithEnumField])
 
-
       validateAndSave(swagger) must_== Valid(())
       val properties = swagger.definitions.values.head.properties
 

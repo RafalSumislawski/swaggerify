@@ -45,9 +45,8 @@ trait SwaggerifySpec extends Specification with StrictLogging {
     Json.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(swagger.toJModel)
 
   def buildSwaggerWithResultTypes(resultTypes: Seq[ResultType[_]],
-                              renderSimpleTypesAsRefModels: Boolean = false,
-                              renderComplexTypesAsRefModels: Boolean = true): Swagger = {
-    resultTypes.foldLeft(SwaggerBuilder(renderSimpleTypesAsRefModels, renderComplexTypesAsRefModels))((sb, resultType) =>
+                                  swaggerBuilder: SwaggerBuilder = new SwaggerBuilder()): Swagger = {
+    resultTypes.foldLeft(swaggerBuilder)((sb, resultType) =>
       sb.add(Route("getPath1", Some("Description"),
         "get", "path",
         responses = Seq(SwaggerBuilder.ok(resultType.swaggerify))))
@@ -55,9 +54,8 @@ trait SwaggerifySpec extends Specification with StrictLogging {
   }
 
   def buildSwaggerWithResultType(resultTypes: ResultType[_],
-                                 renderSimpleTypesAsRefModels: Boolean = false,
-                                 renderComplexTypesAsRefModels: Boolean = true): Swagger = {
-    Seq(resultTypes).foldLeft(SwaggerBuilder(renderSimpleTypesAsRefModels, renderComplexTypesAsRefModels))((sb, resultType) =>
+                                 swaggerBuilder: SwaggerBuilder = new SwaggerBuilder()): Swagger = {
+    Seq(resultTypes).foldLeft(swaggerBuilder)((sb, resultType) =>
       sb.add(Route("getPath1", Some("Description"),
         "get", "path",
         responses = Seq(SwaggerBuilder.ok(resultType.swaggerify))))
@@ -65,9 +63,8 @@ trait SwaggerifySpec extends Specification with StrictLogging {
   }
 
   def buildSwaggerWithBodyParam(parameter: BodyParameter[_],
-                                renderSimpleTypesAsRefModels: Boolean = false,
-                                renderComplexTypesAsRefModels: Boolean = true): Swagger = {
-    Seq(parameter).foldLeft(SwaggerBuilder(renderSimpleTypesAsRefModels, renderComplexTypesAsRefModels))((sb, param) =>
+                                swaggerBuilder: SwaggerBuilder = new SwaggerBuilder()): Swagger = {
+    Seq(parameter).foldLeft(swaggerBuilder)((sb, param) =>
       sb.add(Route("getPath1", Some("Description"),
         "get", "path",
         responses = Seq(SwaggerBuilder.ok[String]),
@@ -77,9 +74,8 @@ trait SwaggerifySpec extends Specification with StrictLogging {
   }
 
   def buildSwaggerWithQueryParam(parameter: QueryParameter[_],
-                                 renderSimpleTypesAsRefModels: Boolean = false,
-                                 renderComplexTypesAsRefModels: Boolean = true): Swagger = {
-    Seq(parameter).foldLeft(SwaggerBuilder(renderSimpleTypesAsRefModels, renderComplexTypesAsRefModels))((sb, param) =>
+                                 swaggerBuilder: SwaggerBuilder = new SwaggerBuilder()): Swagger = {
+    Seq(parameter).foldLeft(swaggerBuilder)((sb, param) =>
       sb.add(Route("getPath1", Some("Description"),
         "get", "path",
         responses = Seq(SwaggerBuilder.ok[String]),
@@ -89,9 +85,8 @@ trait SwaggerifySpec extends Specification with StrictLogging {
   }
 
   def buildSwaggerWithPathParam(parameter: PathParameter[_],
-                                renderSimpleTypesAsRefModels: Boolean = false,
-                                renderComplexTypesAsRefModels: Boolean = true): Swagger = {
-    Seq(parameter).foldLeft(SwaggerBuilder(renderSimpleTypesAsRefModels, renderComplexTypesAsRefModels))((sb, param) =>
+                                swaggerBuilder: SwaggerBuilder = new SwaggerBuilder()): Swagger = {
+    Seq(parameter).foldLeft(swaggerBuilder)((sb, param) =>
       sb.add(Route("getPath1", Some("Description"),
         "get", "path" / PathVar("pathParam1")(param.swaggerify),
         responses = Seq(SwaggerBuilder.ok[String]),

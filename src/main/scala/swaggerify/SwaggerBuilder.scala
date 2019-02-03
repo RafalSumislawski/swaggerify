@@ -6,7 +6,9 @@ import swaggerify.{models => m}
 import scala.collection.immutable.ListMap
 import scala.language.implicitConversions
 
-case class SwaggerBuilder(renderSimpleTypesAsRefModels: Boolean = false, // TODO is the definition of simple and complex clear?
+case class SwaggerBuilder(renderSimpleTypesAsRefModels: Boolean = false,
+                          renderArraysAsRefModels: Boolean = false,
+                          renderMapsAsRefModels: Boolean = false,
                           renderComplexTypesAsRefModels: Boolean = true,
                           paths: Map[String, m.Path] = ListMap.empty,
                           definitions: Map[String, m.Model] = ListMap.empty) {
@@ -86,8 +88,8 @@ case class SwaggerBuilder(renderSimpleTypesAsRefModels: Boolean = false, // TODO
     val shouldUseRefModel = swaggerify.asProperty match {
       case _: m.AbstractProperty => renderSimpleTypesAsRefModels
       case _: m.StringProperty => renderSimpleTypesAsRefModels
-      case _: m.ArrayProperty => renderSimpleTypesAsRefModels
-      case _: m.MapProperty => renderSimpleTypesAsRefModels
+      case _: m.ArrayProperty => renderArraysAsRefModels
+      case _: m.MapProperty => renderMapsAsRefModels
       case _: m.ObjectProperty => renderComplexTypesAsRefModels
       case _: m.RefProperty => renderComplexTypesAsRefModels
     }

@@ -162,7 +162,7 @@ object Swaggerify {
 
   def swaggerifyAsSimpleType[T](`type`: String, format: Option[String] = None, description: Option[String] = None): Swaggerify[T] =
     Swg(
-      AbstractProperty(`type` = `type`, format = format),
+      AbstractProperty(`type` = `type`, format = format, description = description),
       Some(ModelImpl(id = `type`, id2 = `type`, `type` = Some(`type`), format = format, description = description, isSimple = true)),
       _ => Set.empty
     )
@@ -196,7 +196,7 @@ object Swaggerify {
   def swaggerifyAsArray[T, I: Swaggerify](uniqueItems: Boolean = false): Swaggerify[T] =
     Swg(
       ArrayProperty(Swaggerify[I].asProperty, uniqueItems = uniqueItems),
-      Some(ArrayModel(id = null, id2 = null, `type` = Some("array"), items = Some(Swaggerify[I].asProperty))), // FIXME nulls!
+      Some(ArrayModel(id = null, id2 = null, `type` = Some("array"), items = Some(Swaggerify[I].asProperty), uniqueItems = uniqueItems)), // FIXME nulls!
       Swaggerify[I].genPropertyDeps
     )
 
@@ -208,7 +208,11 @@ object Swaggerify {
 
   implicit def swaggerifyStringToAnyRefJMap: Swaggerify[java.util.Map[String, AnyRef]] = swaggerifyAsMap[java.util.Map[String, AnyRef], AnyRef](swaggerifyAnyRef)
 
-  val swaggerifyAnyRef: Swaggerify[AnyRef] = Swg(AbstractProperty("object"), None, _ => Set.empty)
+  val swaggerifyAnyRef: Swaggerify[AnyRef] = Swg(
+    AbstractProperty("object"),
+    Some(ModelImpl(id = null, id2 = null, `type` = Some("object"))), // FIXME nulls!
+    _ => Set.empty
+  )
 
   def swaggerifyAsMap[T, I: Swaggerify]: Swaggerify[T] =
     Swg(

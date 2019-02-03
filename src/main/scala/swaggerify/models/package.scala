@@ -359,6 +359,7 @@ object `package` {
     , items        : Option[Property]      = None
     , example      : Option[String]        = None
     , externalDocs : Option[ExternalDocs]  = None
+    , uniqueItems  : Boolean               = false
   ) extends Model {
 
     def toJModel: jm.Model = {
@@ -369,6 +370,7 @@ object `package` {
       am.setItems(fromOption(items.map(_.toJModel)))
       am.setExample(fromOption(example))
       am.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
+      am.setUniqueItems(uniqueItems)
       am
     }
   }
