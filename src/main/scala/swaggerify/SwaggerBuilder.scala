@@ -81,7 +81,7 @@ case class SwaggerBuilder(renderSimpleTypesAsRefModels: Boolean = false,
 
   private def makeResponse(resp: Response[_]): (m.Response, Set[m.Model]) = {
     val swg = useRefModelAccordingToConfiguration(resp.swaggerify)
-    (m.Response(description = resp.description, schema = swg.asModel), swg.modelDependencies)
+    (m.Response(description = resp.description, schema = Some(swg.asModel)), swg.modelDependencies)
   }
 
   private def useRefModelAccordingToConfiguration(swaggerify: Swaggerify[_]): Swaggerify[_] = {

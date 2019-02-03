@@ -19,7 +19,7 @@ sealed trait Parameter {
 case class BodyParameter
 (
     name             : String
-  , schema           : Option[Model]    = None
+  , schema           : Model
   , description      : Option[String]   = None
   , required         : Boolean          = true
   , access           : Option[String]   = None
@@ -30,7 +30,7 @@ case class BodyParameter
 
   def toJModel: jm.parameters.Parameter = {
     val bp = new jm.parameters.BodyParameter
-    bp.setSchema(fromOption(schema.map(_.toJModel)))
+    bp.setSchema(schema.toJModel)
     bp.setName(name)
     bp.setDescription(fromOption(description))
     bp.setRequired(required)

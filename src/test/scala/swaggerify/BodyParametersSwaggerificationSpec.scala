@@ -13,7 +13,7 @@ class BodyParametersSwaggerificationSpec extends SwaggerifySpec {
       validateAndSave(swagger) must_== Valid(())
       val bodyParameter = swagger.paths.values.head.get.get.parameters.head.asInstanceOf[models.BodyParameter]
       bodyParameter.in must_== "body"
-      bodyParameter.schema.get.asInstanceOf[models.RefModel].ref must_== "Prod"
+      bodyParameter.schema.asInstanceOf[models.RefModel].ref must_== "Prod"
 
       swagger.definitions("Prod").asInstanceOf[models.ModelImpl].`type` must beSome("object")
     }
@@ -24,7 +24,7 @@ class BodyParametersSwaggerificationSpec extends SwaggerifySpec {
       validateAndSave(swagger) must_== Valid(())
       val bodyParameter = swagger.paths.values.head.get.get.parameters.head.asInstanceOf[models.BodyParameter]
       bodyParameter.in must_== "body"
-      bodyParameter.schema.get.asInstanceOf[models.ModelImpl].`type` must beSome("string")
+      bodyParameter.schema.asInstanceOf[models.ModelImpl].`type` must beSome("string")
       swagger.definitions.size must_== 0
     }
 
@@ -34,9 +34,9 @@ class BodyParametersSwaggerificationSpec extends SwaggerifySpec {
       validateAndSave(swagger) must_== Valid(())
       val bodyParameter = swagger.paths.values.head.get.get.parameters.head.asInstanceOf[models.BodyParameter]
       bodyParameter.in must_== "body"
-      bodyParameter.schema.get.asInstanceOf[models.ModelImpl].`type` must beSome("integer")
-      bodyParameter.schema.get.asInstanceOf[models.ModelImpl].format must beSome("int32")
-      bodyParameter.schema.get.asInstanceOf[models.ModelImpl].description must beSome("short")
+      bodyParameter.schema.asInstanceOf[models.ModelImpl].`type` must beSome("integer")
+      bodyParameter.schema.asInstanceOf[models.ModelImpl].format must beSome("int32")
+      bodyParameter.schema.asInstanceOf[models.ModelImpl].description must beSome("short")
       swagger.definitions.size must_== 0
     }
 
@@ -46,10 +46,10 @@ class BodyParametersSwaggerificationSpec extends SwaggerifySpec {
       validateAndSave(swagger) must_== Valid(())
       val bodyParameter = swagger.paths.values.head.get.get.parameters.head.asInstanceOf[models.BodyParameter]
       bodyParameter.in must_== "body"
-      bodyParameter.schema.get.asInstanceOf[models.ArrayModel].uniqueItems must_== false
-      bodyParameter.schema.get.asInstanceOf[models.ArrayModel].items.get.`type` must_== "integer"
-      bodyParameter.schema.get.asInstanceOf[models.ArrayModel].items.get.format must beSome("int32")
-      bodyParameter.schema.get.asInstanceOf[models.ArrayModel].items.get.description must beSome("short")
+      bodyParameter.schema.asInstanceOf[models.ArrayModel].uniqueItems must_== false
+      bodyParameter.schema.asInstanceOf[models.ArrayModel].items.get.`type` must_== "integer"
+      bodyParameter.schema.asInstanceOf[models.ArrayModel].items.get.format must beSome("int32")
+      bodyParameter.schema.asInstanceOf[models.ArrayModel].items.get.description must beSome("short")
       swagger.definitions.size must_== 0
     }
 

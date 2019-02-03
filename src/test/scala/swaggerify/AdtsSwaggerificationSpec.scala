@@ -54,6 +54,7 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
     }
 
     "Build two separate model definitions for a generic product parametrised with two different type parameters" in {
+      pending("type parameters are not available via Magnolia API (https://github.com/propensive/magnolia/issues/148)")
       case class GenericProd[T](a: Option[T], b: T)
       val swagger = buildSwaggerWithResultTypes(Seq(ResultType[GenericProd[Prod]], ResultType[GenericProd[String]]))
 
@@ -116,7 +117,7 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
     }
 
     "Build a model when whole sealed trait as well as a subset of it are used." in {
-      pending("multi-level hierarchies of sealed traits aren't fully supported due to flattening in magnolia")
+      pending("multi-level hierarchies of sealed traits aren't fully supported due to flattening in Magnolia (https://github.com/propensive/magnolia/issues/88)")
       // Sum2a and Sum2b will refer to Sum2, but Sum2 will not refer to Sum. On the other hand Sum will refer to Sum1, Sum2a and Sum2b.
       sealed trait Sum
       case class Sum1(i: Int) extends Sum

@@ -15,7 +15,7 @@ trait Swaggerify[T] {
 
   def genPropertyDeps: Set[Swaggerify[_]] => Set[Model]
 
-  def asModel: Option[Model] // TODO should this be an Option?
+  def asModel: Model
   /** If asModel is used, these are the models it refers to */
   def modelDependencies: Set[Model]
 
@@ -39,14 +39,14 @@ trait Swaggerify[T] {
 
 // TODO consider distinguishing simple types to put a limitation on what can be used as non-body parameters
 class Swg[T](asProp: => Property,
-             model: => Option[Model],
+             model: => Model,
              override val genModelDeps: Set[Swaggerify[_]] => Set[Model],
              override val isEmptyObject: Boolean = false
             ) extends Swaggerify[T] {
 
   override lazy val asProperty: Property = asProp
 
-  override lazy val asModel: Option[Model] = model
+  override lazy val asModel: Model = model
 
   override lazy val modelDependencies: Set[Model] = genModelDeps(Set.empty)
 
@@ -55,7 +55,7 @@ class Swg[T](asProp: => Property,
 
   override def genPropertyDeps: Set[Swaggerify[_]] => Set[Model] = alreadyKnown => {
     val alreadyKnown2 = alreadyKnown + this
-    if (asProperty.isInstanceOf[RefProperty] && !asModel.exists(_.isInstanceOf[RefModel])) genModelDeps(alreadyKnown2) ++ asModel
+    if (asProperty.isInstanceOf[RefProperty] && !asModel.isInstanceOf[RefModel]) genModelDeps(alreadyKnown2) + asModel
     else genModelDeps(alreadyKnown2)
   }
 
@@ -98,14 +98,14 @@ class Swg[T](asProp: => Property,
   }
 
   def usingRefModel(): Swaggerify[T] = {
-    if (asModel.exists(_.isInstanceOf[RefModel])) this
-    else Swg(asProperty, asModel.map(m => RefModel(s"${m.id}Ref", s"${m.id2}Ref", ref = m.id2)), _ => asModel.toSet ++ modelDependencies)
+    if (asModel.isInstanceOf[RefModel]) this
+    else Swg(asProperty, RefModel(s"${asModel.id}Ref", s"${asModel.id2}Ref", ref = asModel.id2), _ => modelDependencies + asModel)
   }
 }
 
-object Swg{
+object Swg {
   @inline def apply[T](asProperty: Property,
-                       model: => Option[Model],
+                       model: => Model,
                        genModelDeps: Set[Swaggerify[_]] => Set[Model],
                        isEmptyObject: Boolean = false
                       ): Swg[T] = new Swg[T](asProperty, model, genModelDeps, isEmptyObject)
@@ -125,7 +125,7 @@ object Swaggerify {
 
   def swaggerifyAsEmptyObject[T](fullTypeName: String, simpleTypeName: String): Swaggerify[T] = {
     val model = ModelImpl(id = fullTypeName, id2 = simpleTypeName, description = Some(simpleTypeName), `type` = Some("object"))
-    Swg(RefProperty(simpleTypeName), Some(model), _ => Set.empty, isEmptyObject = true)
+    Swg(RefProperty(simpleTypeName), model, _ => Set.empty, isEmptyObject = true)
   }
 
   implicit val swaggerifyString: Swaggerify[String] = swaggerifyAsSimpleType("string")
@@ -163,7 +163,7 @@ object Swaggerify {
   def swaggerifyAsSimpleType[T](`type`: String, format: Option[String] = None, description: Option[String] = None): Swaggerify[T] =
     Swg(
       AbstractProperty(`type` = `type`, format = format, description = description),
-      Some(ModelImpl(id = `type`, id2 = `type`, `type` = Some(`type`), format = format, description = description, isSimple = true)),
+      ModelImpl(id = `type`, id2 = `type`, `type` = Some(`type`), format = format, description = description, isSimple = true),
       _ => Set.empty
     )
 
@@ -196,7 +196,7 @@ object Swaggerify {
   def swaggerifyAsArray[T, I: Swaggerify](uniqueItems: Boolean = false): Swaggerify[T] =
     Swg(
       ArrayProperty(Swaggerify[I].asProperty, uniqueItems = uniqueItems),
-      Some(ArrayModel(id = null, id2 = null, `type` = Some("array"), items = Some(Swaggerify[I].asProperty), uniqueItems = uniqueItems)), // FIXME nulls!
+      ArrayModel(id = null, id2 = null, `type` = Some("array"), items = Some(Swaggerify[I].asProperty), uniqueItems = uniqueItems), // FIXME nulls! // TODO should items be an Option for ArrayModel?
       Swaggerify[I].genPropertyDeps
     )
 
@@ -210,16 +210,15 @@ object Swaggerify {
 
   val swaggerifyAnyRef: Swaggerify[AnyRef] = Swg(
     AbstractProperty("object"),
-    Some(ModelImpl(id = null, id2 = null, `type` = Some("object"))), // FIXME nulls!
+    ModelImpl(id = null, id2 = null, `type` = Some("object")), // FIXME nulls!
     _ => Set.empty
   )
 
-  def swaggerifyAsMap[T, I: Swaggerify]: Swaggerify[T] =
-    Swg(
-      MapProperty(Swaggerify[I].asProperty),
-      Some(ModelImpl(id = null, id2 = null, `type` = Some("object"), additionalProperties = Some(Swaggerify[I].asProperty))), // FIXME nulls!
-      Swaggerify[I].genPropertyDeps
-    )
+  def swaggerifyAsMap[T, I: Swaggerify]: Swaggerify[T] = Swg(
+    MapProperty(Swaggerify[I].asProperty),
+    ModelImpl(id = null, id2 = null, `type` = Some("object"), additionalProperties = Some(Swaggerify[I].asProperty)), // FIXME nulls!
+    Swaggerify[I].genPropertyDeps
+  )
 
   // consider excluding it from the default implicits as there are many reasonable ways to encode an either.
   implicit def swaggerifyEither[L: Swaggerify, R: Swaggerify]: Swaggerify[Either[L, R]] = {
@@ -233,7 +232,7 @@ object Swaggerify {
       // FIXME strange things will happen with Either[Option[L], R] etc.
       properties = Map("left" -> Swaggerify[L].asProperty.withRequired(false), "right" -> Swaggerify[R].asProperty.withRequired(false))
     )
-    Swg(RefProperty(model.id2), Some(model),
+    Swg(RefProperty(model.id2), model,
       alreadyKnown => Swaggerify[L].genPropertyDeps(alreadyKnown) ++ Swaggerify[R].genPropertyDeps(alreadyKnown))
   }
 
@@ -244,62 +243,61 @@ object Swaggerify {
 
   type Typeclass[T] = Swaggerify[T]
 
-  def combine[T](ctx: CaseClass[Swaggerify, T]): Swaggerify[T] = {
-    if (ctx.isValueClass) {
-      ctx.parameters.head.typeclass.asInstanceOf[Swaggerify[T]]
-    } else if (ctx.isObject) {
-      swaggerifyAsEmptyObject[T](ctx.typeName.full, ctx.typeName.short)
-    } else {
-      def model = ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short,
-        description = Some(ctx.typeName.short),
-        `type` = Some("object"),
-        properties = ctx.parameters.map(param => param.label -> param.typeclass.asProperty).toMap
-      )
+  def combine[T](ctx: CaseClass[Swaggerify, T]): Swaggerify[T] =
+    if (ctx.isValueClass) ctx.parameters.head.typeclass.asInstanceOf[Swaggerify[T]]
+    else if (ctx.isObject) swaggerifyAsEmptyObject[T](ctx.typeName.full, ctx.typeName.short)
+    else swaggerifyAsObject(ctx)
 
-      def modelSet(alreadyKnown: Set[Swaggerify[_]]) = {
-        ctx.parameters.foldLeft(Set.empty[Model])((acc, param) =>
-          if(alreadyKnown.contains(param.typeclass)) acc
-          else acc ++ param.typeclass.genPropertyDeps(alreadyKnown)
-        )
-      }
+  private def swaggerifyAsObject[T](ctx: CaseClass[Swaggerify, T]): Swaggerify[T] = {
+    def model = ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short,
+      description = Some(ctx.typeName.short),
+      `type` = Some("object"),
+      properties = ctx.parameters.map(param => param.label -> param.typeclass.asProperty).toMap
+    )
 
-      Swg(RefProperty(ctx.typeName.short), Some(model), modelSet)
-    }
+    def modelSet(alreadyKnown: Set[Swaggerify[_]]) =
+      ctx.parameters
+        .collect { case param if !alreadyKnown.contains(param.typeclass) => param.typeclass.genPropertyDeps(alreadyKnown) }
+        .toSet.flatten
+
+    Swg(RefProperty(ctx.typeName.short), model, modelSet)
   }
 
-  def dispatch[T](ctx: SealedTrait[Swaggerify, T]): Swaggerify[T] = {
-    if (ctx.subtypes.forall(_.typeclass.isEmptyObject)) { // a sealed trait of object is handled as an enum
-      Swg(
-        StringProperty(enums = ctx.subtypes.map(_.typeName.short).toSet, description = Some(ctx.typeName.short)),
-        Some(ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short, `type` = Some("string"), isSimple = true)),
-        _ => Set.empty
+  def dispatch[T](ctx: SealedTrait[Swaggerify, T]): Swaggerify[T] =
+    if (ctx.subtypes.forall(_.typeclass.isEmptyObject)) swaggerifyAsEnum(ctx)
+    else swaggerifyAsInheritanceHierarchy(ctx)
+
+  private def swaggerifyAsEnum[T](ctx: SealedTrait[Swaggerify, T]): Swaggerify[T] = Swg(
+    StringProperty(enums = ctx.subtypes.map(_.typeName.short).toSet, description = Some(ctx.typeName.short)),
+    ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short, `type` = Some("string"), isSimple = true),
+    _ => Set.empty
+  )
+
+  private def swaggerifyAsInheritanceHierarchy[T](ctx: SealedTrait[Swaggerify, T]): Swaggerify[T] = {
+    val discriminatorName = "type" // TODO support for @DiscriminatorField
+    val discriminatorValues = ctx.subtypes.map(_.typeclass.asModel.id2).toSet
+    val ownModel = ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short,
+      description = Some(ctx.typeName.short),
+      `type` = Some("object"),
+      discriminator = Some(discriminatorName),
+      properties = Map(discriminatorName -> StringProperty(enums = discriminatorValues))
+    )
+
+    val ownModelRef = RefModel(ownModel.id, ownModel.id2, ownModel.id2)
+
+    def subTypesModels = ctx.subtypes.map { sub =>
+      val subModel = sub.typeclass.asModel
+      ComposedModel(id = subModel.id, id2 = subModel.id2,
+        description = subModel.description,
+        allOf = List(ownModelRef, subModel),
+        parent = Some(ownModelRef)
       )
-    } else { // a sealed trait with at least one case class is handled as an inheritance hierarchy
-      val discriminatorName = "type" // TODO support for @DiscriminatorField
-      val discriminatorValues = ctx.subtypes.map(_.typeclass.asModel.get.id2).toSet
-      val ownModel = ModelImpl(id = ctx.typeName.full, id2 = ctx.typeName.short,
-        description = Some(ctx.typeName.short),
-        `type` = Some("object"),
-        discriminator = Some(discriminatorName),
-        properties = Map(discriminatorName -> StringProperty(enums = discriminatorValues))
-      )
-
-      val ownModelRef = RefModel(ownModel.id, ownModel.id2, ownModel.id2)
-
-      def subTypesModels = ctx.subtypes.map { sub =>
-        val subModel = sub.typeclass.asModel.get
-        ComposedModel(id = subModel.id, id2 = subModel.id2,
-          description = subModel.description,
-          allOf = List(ownModelRef, subModel),
-          parent = Some(ownModelRef)
-        )
-      }
-
-      def modelSet(alreadyKnown: Set[Swaggerify[_]]) =
-        ctx.subtypes.map(_.typeclass.genModelDeps(alreadyKnown)).fold(Set())(_ ++ _) ++ subTypesModels
-
-      Swg(RefProperty(ownModel.id2), Some(ownModel), modelSet)
     }
+
+    def modelSet(alreadyKnown: Set[Swaggerify[_]]) =
+      ctx.subtypes.map(_.typeclass.genModelDeps(alreadyKnown)).fold(Set())(_ ++ _) ++ subTypesModels
+
+    Swg(RefProperty(ownModel.id2), ownModel, modelSet)
   }
 
   implicit def gen[T]: Swaggerify[T] = macro Magnolia.gen[T]
