@@ -8,7 +8,7 @@ class SpecialTypesSwaggerificationSpec extends SwaggerifySpec {
   "SwaggerBuilder" should {
 
     "Build an empty model definition for Unit" in {
-      val swagger = buildSwaggerWith(ResultType[Unit])
+      val swagger = buildSwaggerWithResultType(ResultType[Unit])
 
       validateAndSave(swagger) must_== Valid(())
       swagger.definitions("Unit").asInstanceOf[swaggerify.models.ModelImpl].`type` must beSome("object")
@@ -16,7 +16,7 @@ class SpecialTypesSwaggerificationSpec extends SwaggerifySpec {
     }
 
     "Build an empty model definition for Void" in {
-      val swagger = buildSwaggerWith(ResultType[java.lang.Void])
+      val swagger = buildSwaggerWithResultType(ResultType[java.lang.Void])
 
       validateAndSave(swagger) must_== Valid(())
       swagger.definitions("Void").asInstanceOf[swaggerify.models.ModelImpl].`type` must beSome("object")
@@ -24,7 +24,7 @@ class SpecialTypesSwaggerificationSpec extends SwaggerifySpec {
     }
 
     "Build an empty model definition for Nothing" in {
-      val swagger = buildSwaggerWith(ResultType[Nothing])
+      val swagger = buildSwaggerWithResultType(ResultType[Nothing])
 
       validateAndSave(swagger) must_== Valid(())
       swagger.definitions("Nothing").asInstanceOf[swaggerify.models.ModelImpl].`type` must beSome("object")
@@ -32,7 +32,7 @@ class SpecialTypesSwaggerificationSpec extends SwaggerifySpec {
     }
 
     "Build an empty model definition for Null (named Nul due to issues with YAML)" in {
-      val swagger = buildSwaggerWith(ResultType[Null])
+      val swagger = buildSwaggerWithResultType(ResultType[Null])
 
       validateAndSave(swagger) must_== Valid(())
       swagger.definitions("Nul").asInstanceOf[swaggerify.models.ModelImpl].`type` must beSome("object")

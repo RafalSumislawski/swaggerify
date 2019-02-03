@@ -8,7 +8,7 @@ class BodyParametersSwaggerificationSpec extends SwaggerifySpec {
   "SwaggerBuilder" should {
     "Model product type body parameter as an object" in {
       case class Prod(a: String)
-      val swagger = buildSwaggerWith(BodyParameter[Prod])
+      val swagger = buildSwaggerWithBodyParam(BodyParameter[Prod])
 
       validateAndSave(swagger) must_== Valid(())
       val bodyParameter = swagger.paths.values.head.get.get.parameters.head.asInstanceOf[models.BodyParameter]
