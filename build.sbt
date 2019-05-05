@@ -2,13 +2,13 @@
 name := "swaggerify"
 organization := "swaggerify"
 
-version := "0.2.0"
+version := "0.3.0-SNAPSHOT"
 val sVersion = "2.12.8"
 scalaVersion := sVersion
 
 val scalaReflect = "org.scala-lang" % "scala-reflect" % sVersion
 
-val magnolia = ("com.propensive" %% "magnolia" % "0.10.0").excludeAll(ExclusionRule("org.scala-lang", "scala-compiler"))
+val magnolia = "com.softwaremill" %% "magnolia" % "0.11.0-sml"
 
 val swaggerVersion = "1.5.22"
 val swaggerModels = "io.swagger" % "swagger-models" % swaggerVersion
@@ -35,9 +35,6 @@ val circeJava8 = "io.circe" %% "circe-java8" % circeVersion
 val circeYaml = "io.circe" %% "circe-yaml" % "0.9.0"
 val allCirce = Seq(circeGeneric, circeParser, circeJava8, circeYaml)
 
-val http4sCore = "org.http4s" %% "http4s-core" % "0.20.0-M5"
-val rhoSwagger = "org.http4s" %% "rho-swagger" % "0.19.0-M5"
-
 val specs2Version = "4.5.1"
 val specsCore = "org.specs2" %% "specs2-core" % specs2Version
 val specsScalaCheck = "org.specs2" %% "specs2-scalacheck" % specs2Version
@@ -55,10 +52,12 @@ scalacOptions ++= Seq(
   "-deprecation",
   "-Xfuture",
   "-Ywarn-unused",
-  "-Xfatal-warnings"
+  "-Xfatal-warnings",
+  "-language:higherKinds",
+  "Ypartial-unification"
 )
 
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.0")
 
 cancelable in Global := true
 crossPaths := false

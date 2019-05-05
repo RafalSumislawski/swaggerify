@@ -48,13 +48,12 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
       val swagger = buildSwaggerWithResultType(ResultType[GenericProd[Prod]])
 
       validateAndSave(swagger) must_== Valid(())
-      swagger.definitions.keySet must_== Set("GenericProd", "Prod")
-      swagger.definitions("GenericProd").properties("a").asInstanceOf[RefProperty].ref must_== "Prod"
-      swagger.definitions("GenericProd").properties("b").asInstanceOf[RefProperty].ref must_== "Prod"
+      swagger.definitions.keySet must_== Set("GenericProd[Prod]", "Prod")
+      swagger.definitions("GenericProd[Prod]").properties("a").asInstanceOf[RefProperty].ref must_== "Prod"
+      swagger.definitions("GenericProd[Prod]").properties("b").asInstanceOf[RefProperty].ref must_== "Prod"
     }
 
     "Build two separate model definitions for a generic product parametrised with two different type parameters" in {
-      pending("type parameters are not available via Magnolia API (https://github.com/propensive/magnolia/issues/148)")
       case class GenericProd[T](a: Option[T], b: T)
       val swagger = buildSwaggerWithResultTypes(Seq(ResultType[GenericProd[Prod]], ResultType[GenericProd[String]]))
 
@@ -91,8 +90,8 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
 
       val sumModel = swagger.definitions("Sum").asInstanceOf[ModelImpl]
       sumModel.discriminator must beSome("type")
-      swagger.definitions("Sum1").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id2
-      swagger.definitions("Sum2").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id2
+      swagger.definitions("Sum1").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id.shortId
+      swagger.definitions("Sum2").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id.shortId
     }
 
     // I would prefer a two level swagger model here,
@@ -111,9 +110,9 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
 
       val sumModel = swagger.definitions("Sum").asInstanceOf[ModelImpl]
       sumModel.discriminator must beSome("type")
-      swagger.definitions("Sum1").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id2
-      swagger.definitions("Sum2a").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id2
-      swagger.definitions("Sum2b").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id2
+      swagger.definitions("Sum1").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id.shortId
+      swagger.definitions("Sum2a").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id.shortId
+      swagger.definitions("Sum2b").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id.shortId
     }
 
     "Build a model when whole sealed trait as well as a subset of it are used." in {
@@ -132,11 +131,11 @@ class AdtsSwaggerificationSpec extends SwaggerifySpec {
 
       val sumModel = swagger.definitions("Sum").asInstanceOf[ModelImpl]
       sumModel.discriminator must beSome("type")
-      swagger.definitions("Sum1").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id2
-      swagger.definitions("Sum2").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id2
+      swagger.definitions("Sum1").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id.shortId
+      swagger.definitions("Sum2").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sumModel.id.shortId
       val sum2Model = swagger.definitions("Sum2").asInstanceOf[ComposedModel]
-      swagger.definitions("Sum2a").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sum2Model.id2
-      swagger.definitions("Sum2b").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sum2Model.id2
+      swagger.definitions("Sum2a").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sum2Model.id.shortId
+      swagger.definitions("Sum2b").asInstanceOf[ComposedModel].parent.get.asInstanceOf[RefModel].ref must_== sum2Model.id.shortId
     }
   }
 }

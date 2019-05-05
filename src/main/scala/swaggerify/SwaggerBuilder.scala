@@ -23,7 +23,7 @@ case class SwaggerBuilder(renderSimpleTypesAsRefModels: Boolean = false,
     val basePathModel = paths.getOrElse(pathString, m.Path(parameters = parameters))
     val pathModel = addOperation(basePathModel, operationName, operation)
 
-    val newDefinitions = models.toVector.map(m => m.id2 -> m).toMap
+    val newDefinitions = models.toVector.map(m => m.id.shortId -> m).toMap
 
     copy(paths = this.paths + (pathString -> pathModel), definitions = this.definitions ++ newDefinitions)
   }
