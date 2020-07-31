@@ -53,7 +53,7 @@ scalacOptions ++= Seq(
   "-Ywarn-unused",
   "-Xfatal-warnings",
   "-language:higherKinds",
-  "Ypartial-unification"
+  "-Ypartial-unification"
 )
 
 addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3")
