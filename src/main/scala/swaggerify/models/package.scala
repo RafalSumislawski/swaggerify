@@ -25,6 +25,7 @@ object `package` {
     , parameters: Map[String, Parameter] = Map.empty
     , externalDocs: Option[ExternalDocs] = None
     , security: List[SecurityRequirement] = Nil
+    , tags: List[Tag] = Nil
     , vendorExtensions: Map[String, Any] = Map.empty
   ) {
 
@@ -42,6 +43,7 @@ object `package` {
       s.setSecurityDefinitions(fromMap(securityDefinitions.mapValues(_.toJModel)))
       s.setDefinitions(fromMap(definitions.mapValues(_.toJModel)))
       s.setParameters(fromMap(parameters.mapValues(_.toJModel)))
+      s.setTags(fromList(tags.map(_.toJModel)))
       s.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
       vendorExtensions.foreach {
         case (key, value: Map[_, _]) => s.setVendorExtension(key, fromMap(value))
@@ -614,6 +616,24 @@ object `package` {
       sp.setPattern(fromOption(pattern))
       sp.setDefault(fromOption(default))
       sp
+    }
+  }
+
+  case class Tag
+  (
+    name: String
+    , description: Option[String] = None
+    , externalDocs: Option[ExternalDocs] = None
+    , vendorExtensions: Map[String, Any] = Map.empty
+  ) {
+
+    def toJModel: jm.Tag = {
+      val tag = new jm.Tag
+      tag.setName(name)
+      tag.setDescription(fromOption(description))
+      tag.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
+      vendorExtensions.foreach { case (key, value) => tag.setVendorExtension(key, value) }
+      tag
     }
   }
 

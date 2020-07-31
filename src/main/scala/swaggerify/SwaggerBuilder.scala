@@ -11,7 +11,9 @@ case class SwaggerBuilder(renderSimpleTypesAsRefModels: Boolean = false,
                           renderMapsAsRefModels: Boolean = false,
                           renderComplexTypesAsRefModels: Boolean = true,
                           paths: Map[String, m.Path] = ListMap.empty,
-                          definitions: Map[String, m.Model] = ListMap.empty) {
+                          definitions: Map[String, m.Model] = ListMap.empty,
+                          tags: Map[String, m.Tag] = ListMap.empty,
+                         ) {
 
   def add(route: Route): SwaggerBuilder = {
     val path = route.path
@@ -25,7 +27,13 @@ case class SwaggerBuilder(renderSimpleTypesAsRefModels: Boolean = false,
 
     val newDefinitions = models.toVector.map(m => m.id.shortId -> m).toMap
 
-    copy(paths = this.paths + (pathString -> pathModel), definitions = this.definitions ++ newDefinitions)
+    val tags = route.tags.map(t => t.name -> t).toMap
+
+    copy(
+      paths = this.paths + (pathString -> pathModel),
+      definitions = this.definitions ++ newDefinitions,
+      tags = this.tags ++ tags,
+    )
   }
 
   private def addOperation(basePathModel: m.Path, operationName: String, operation: m.Operation): m.Path = {
@@ -100,7 +108,8 @@ case class SwaggerBuilder(renderSimpleTypesAsRefModels: Boolean = false,
     m.Swagger(
       info = info,
       paths = paths,
-      definitions = definitions
+      definitions = definitions,
+      tags = tags.values.toList,
     )
   }
 }
@@ -109,7 +118,7 @@ object SwaggerBuilder {
   case class Route(name: String, description: Option[String], method: String, path: Path, responses: Seq[Response[_]],
                    bodyParameter: Option[BodyParameter[_]] = None, queryParameters: Seq[NonBodyParameter[_]] = Seq.empty,
                    headerParameters: Seq[NonBodyParameter[_]] = Seq.empty, cookieParameters: Seq[NonBodyParameter[_]] = Seq.empty,
-                   formParameters: Seq[NonBodyParameter[_]] = Seq.empty)
+                   formParameters: Seq[NonBodyParameter[_]] = Seq.empty, tags: Seq[m.Tag] = Seq.empty)
 
   case class Response[R](code: Int, description: String)(implicit val swaggerify: Swaggerify[R])
 
@@ -131,4 +140,5 @@ object SwaggerBuilder {
   case class NonBodyParameter[T](name: String, description: Option[String] = None)(implicit val swaggerify: Swaggerify[T])
 
   implicit def pathFromString(s: String): Path = Path(Vector(PathString(s)))
+
 }
