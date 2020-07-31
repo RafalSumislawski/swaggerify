@@ -70,7 +70,8 @@ case class SwaggerBuilder(renderSimpleTypesAsRefModels: Boolean = false,
         route.queryParameters.map(p => p.swaggerify.asQueryParameter(p.name)) ++
         route.headerParameters.map(p => p.swaggerify.asHeaderParameter(p.name)) ++
         route.cookieParameters.map(p => p.swaggerify.asCookieParameter(p.name)) ++
-        route.formParameters.map(p => p.swaggerify.asFormParameter(p.name))
+        route.formParameters.map(p => p.swaggerify.asFormParameter(p.name)),
+      tags = route.tags.map(_.name).toList
     )
 
     (operation, models ++ bodyModels)

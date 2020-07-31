@@ -2,7 +2,7 @@
 name := "swaggerify"
 organization := "swaggerify"
 
-version := "0.3.0"
+version := "0.3.1"
 val sVersion = "2.12.12"
 scalaVersion := sVersion
 
