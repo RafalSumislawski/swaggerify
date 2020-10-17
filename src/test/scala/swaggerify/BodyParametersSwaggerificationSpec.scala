@@ -8,7 +8,7 @@ class BodyParametersSwaggerificationSpec extends SwaggerifySpec {
   "SwaggerBuilder" should {
     "Model product type body parameter as a ref to object model" in {
       case class Prod(a: String)
-      val swagger = buildSwaggerWithBodyParam(BodyParameter[Prod])
+      val swagger = buildSwaggerWithBodyParam(BodyParameter[Prod]())
 
       validateAndSave(swagger) must_== Valid(())
       val bodyParameter = swagger.paths.values.head.get.get.parameters.head.asInstanceOf[models.BodyParameter]
@@ -19,7 +19,7 @@ class BodyParametersSwaggerificationSpec extends SwaggerifySpec {
     }
 
     "Model string body parameter as a string" in {
-      val swagger = buildSwaggerWithBodyParam(BodyParameter[String])
+      val swagger = buildSwaggerWithBodyParam(BodyParameter[String]())
 
       validateAndSave(swagger) must_== Valid(())
       val bodyParameter = swagger.paths.values.head.get.get.parameters.head.asInstanceOf[models.BodyParameter]
@@ -29,7 +29,7 @@ class BodyParametersSwaggerificationSpec extends SwaggerifySpec {
     }
 
     "Model int body parameter as an int" in {
-      val swagger = buildSwaggerWithBodyParam(BodyParameter[Short])
+      val swagger = buildSwaggerWithBodyParam(BodyParameter[Short]())
 
       validateAndSave(swagger) must_== Valid(())
       val bodyParameter = swagger.paths.values.head.get.get.parameters.head.asInstanceOf[models.BodyParameter]
@@ -41,7 +41,7 @@ class BodyParametersSwaggerificationSpec extends SwaggerifySpec {
     }
 
     "Model array body parameter as an array" in {
-      val swagger = buildSwaggerWithBodyParam(BodyParameter[Array[Short]])
+      val swagger = buildSwaggerWithBodyParam(BodyParameter[Array[Short]]())
 
       validateAndSave(swagger) must_== Valid(())
       val bodyParameter = swagger.paths.values.head.get.get.parameters.head.asInstanceOf[models.BodyParameter]

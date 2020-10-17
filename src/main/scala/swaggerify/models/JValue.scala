@@ -1,5 +1,6 @@
 package swaggerify.models
-import scala.collection.JavaConverters._
+//import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object JValue {
     def fromOption[A](oa: Option[A]): A =

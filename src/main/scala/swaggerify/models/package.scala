@@ -6,7 +6,7 @@ import _root_.swaggerify.models.JValue._
 import io.swagger.{models => jm}
 import swaggerify.Id
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object `package` {
 
@@ -38,11 +38,11 @@ object `package` {
       s.setSchemes(fromList(schemes.map(_.toJModel)))
       s.setConsumes(fromList(consumes))
       s.setProduces(fromList(produces))
-      s.setPaths(fromMap(paths.mapValues(_.toJModel)))
+      s.setPaths(fromMap(paths.eagerMapValues(_.toJModel)))
       s.setSecurity(fromList(security.map(_.toJModel)))
-      s.setSecurityDefinitions(fromMap(securityDefinitions.mapValues(_.toJModel)))
-      s.setDefinitions(fromMap(definitions.mapValues(_.toJModel)))
-      s.setParameters(fromMap(parameters.mapValues(_.toJModel)))
+      s.setSecurityDefinitions(fromMap(securityDefinitions.eagerMapValues(_.toJModel)))
+      s.setDefinitions(fromMap(definitions.eagerMapValues(_.toJModel)))
+      s.setParameters(fromMap(parameters.eagerMapValues(_.toJModel)))
       s.setTags(fromList(tags.map(_.toJModel)))
       s.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
       vendorExtensions.foreach {
@@ -292,9 +292,9 @@ object `package` {
       o.setConsumes(fromList(consumes))
       o.setProduces(fromList(produces))
       o.setParameters(fromList(parameters.map(_.toJModel)))
-      o.setResponses(fromMap(responses.mapValues(_.toJModel)))
+      o.setResponses(fromMap(responses.eagerMapValues(_.toJModel)))
       o.setSecurity(fromList(security.map { m =>
-        m.mapValues(_.asJava).asJava
+        m.eagerMapValues(_.asJava).asJava
       }))
       o.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
       o.setDeprecated(fromOption(deprecated.map(_.asInstanceOf[java.lang.Boolean])))
@@ -316,7 +316,7 @@ object `package` {
       r.setDescription(description)
       r.setResponseSchema(fromOption(schema.map(_.toJModel)))
       r.setExamples(fromMap(examples))
-      r.setHeaders(fromMap(headers.mapValues(_.toJModel)))
+      r.setHeaders(fromMap(headers.eagerMapValues(_.toJModel)))
       r
     }
   }
@@ -354,7 +354,7 @@ object `package` {
       m.setDescription(fromOption(description))
       m.setRequired(required.asJava)
       m.setExample(fromOption(example))
-      m.setProperties(fromMap(properties.mapValues(_.toJModel)))
+      m.setProperties(fromMap(properties.eagerMapValues(_.toJModel)))
       if (additionalProperties.nonEmpty) m.setAdditionalProperties(fromOption(additionalProperties.map(_.toJModel)))
       m.setDiscriminator(fromOption(discriminator))
       m.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
@@ -378,7 +378,7 @@ object `package` {
       val am = new jm.ArrayModel
       am.setType(fromOption(`type`))
       am.setDescription(fromOption(description))
-      am.setProperties(fromMap(properties.mapValues(_.toJModel)))
+      am.setProperties(fromMap(properties.eagerMapValues(_.toJModel)))
       am.setItems(items.toJModel)
       am.setExample(fromOption(example))
       am.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
@@ -407,7 +407,7 @@ object `package` {
       parent.map(_.toJModel).foreach(p => cm.setParent(p))
       child.map(_.toJModel).foreach(c => cm.setChild(c))
       cm.setInterfaces(interfaces.map(_.toJModel.asInstanceOf[jm.RefModel]).asJava)
-      cm.setProperties(properties.mapValues(_.toJModel).asJava)
+      cm.setProperties(properties.eagerMapValues(_.toJModel).asJava)
       cm.setExample(fromOption(example))
       cm.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
       cm
@@ -427,7 +427,7 @@ object `package` {
     def toJModel: jm.Model = {
       val rm = new jm.RefModel(ref)
       rm.setDescription(fromOption(description))
-      rm.setProperties(fromMap(properties.mapValues(_.toJModel)))
+      rm.setProperties(fromMap(properties.eagerMapValues(_.toJModel)))
       rm.setExample(fromOption(example))
       rm.setExternalDocs(fromOption(externalDocs.map(_.toJModel)))
       rm
@@ -505,7 +505,7 @@ object `package` {
       ap.setTitle(fromOption(title))
       ap.setDescription(fromOption(description))
       ap.setFormat(fromOption(format))
-      ap.setProperties(fromMap(properties.mapValues(_.toJModel)))
+      ap.setProperties(fromMap(properties.eagerMapValues(_.toJModel)))
       ap
     }
   }
@@ -649,5 +649,10 @@ object `package` {
       ed.setUrl(url)
       ed
     }
+  }
+
+  implicit class RichMap[K, V](val m: Map[K, V]) extends AnyVal {
+    def eagerMapValues[V2](f: V => V2): Map[K, V2] =
+      m.map { case (k, v) => k -> f(v) }
   }
 }

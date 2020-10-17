@@ -3,7 +3,7 @@ package swaggerify.validation
 import cats._
 import cats.data._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object SwaggerValidator {
 
