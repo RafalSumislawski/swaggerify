@@ -1,5 +1,5 @@
 package swaggerify.models
-//import scala.collection.JavaConverters._
+
 import scala.jdk.CollectionConverters._
 
 object JValue {
