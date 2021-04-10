@@ -23,6 +23,7 @@ scalaVersion := sVersion
 crossScalaVersions := List(scala212, scala213)
 
 ThisBuild / dynverVTagPrefix := false
+ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
 
 val magnolia = "com.propensive" %% "magnolia" % "0.17.0"
 
