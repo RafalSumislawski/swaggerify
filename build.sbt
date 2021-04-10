@@ -1,3 +1,4 @@
+import sbt.ThisBuild
 
 inThisBuild(List(
   organization := "io.sumislawski.swaggerify",
@@ -10,8 +11,11 @@ inThisBuild(List(
       "rafal.sumislawski@gmail.com",
       url("https://github.com/RafalSumislawski")
     )
-  )
+  ),
 ))
+
+sonatypeCredentialHost := "s01.oss.sonatype.org"
+sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 
 name := "swaggerify"
 
@@ -23,7 +27,6 @@ scalaVersion := sVersion
 crossScalaVersions := List(scala212, scala213)
 
 ThisBuild / dynverVTagPrefix := false
-ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
 
 val magnolia = "com.propensive" %% "magnolia" % "0.17.0"
 
