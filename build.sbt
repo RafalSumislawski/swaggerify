@@ -1,15 +1,28 @@
 
+inThisBuild(List(
+  organization := "io.sumislawski.swaggerify",
+  homepage := Some(url("https://github.com/RafalSumislawski/swaggerify")),
+  licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+  developers := List(
+    Developer(
+      "RafalSumislawski",
+      "Rafał Sumisławski",
+      "rafal.sumislawski@gmail.com",
+      url("https://github.com/RafalSumislawski")
+    )
+  )
+))
+
 name := "swaggerify"
-organization := "swaggerify"
-version := "0.4.0-SNAPSHOT"
 
 val scala212 = "2.12.13"
 val scala213 = "2.13.5"
 val sVersion = scala213
-val supportedScalaVersions = List(scala212, scala213)
 
 scalaVersion := sVersion
-crossScalaVersions := supportedScalaVersions
+crossScalaVersions := List(scala212, scala213)
+
+ThisBuild / dynverVTagPrefix := false
 
 val magnolia = "com.propensive" %% "magnolia" % "0.17.0"
 
