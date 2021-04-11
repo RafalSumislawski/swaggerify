@@ -26,8 +26,6 @@ val sVersion = scala213
 scalaVersion := sVersion
 crossScalaVersions := List(scala212, scala213)
 
-ThisBuild / dynverVTagPrefix := false
-
 val magnolia = "com.propensive" %% "magnolia" % "0.17.0"
 
 val swaggerVersion = "1.6.2"
